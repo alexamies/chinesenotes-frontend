@@ -15,16 +15,16 @@ export default function DictionaryLookup({ onSearchTextChange }: DictionaryLooku
   }
 
   return (
-    <form className="search-row" onSubmit={handleSubmit}>
+    <form className="flex gap-3" onSubmit={handleSubmit}>
       <input
         type="text"
-        className="search-input"
+        className="flex-1 text-xl px-3 py-2 border border-gray-300 rounded outline-none focus:border-primary transition-colors"
         placeholder="中文"
         aria-label="Chinese term"
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
       />
-      <button type="submit" className="find-button">
+      <button type="submit" className="font-semibold px-6 py-2 bg-primary text-white rounded hover:brightness-90 transition-colors cursor-pointer">
         Find
       </button>
     </form>
