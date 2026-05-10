@@ -15,6 +15,9 @@
 # production
 /build
 
+# generated dictionary (populated by copy-dictionary.mjs at build/dev time)
+/data
+
 # misc
 .DS_Store
 *.pem
@@ -34,3 +37,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# VSCode
+chinesenotes-frontend.code-workspace
