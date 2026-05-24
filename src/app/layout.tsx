@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Header from "@/components/Header";
 
 export const metadata: Metadata = {
   title: "Chinese Notes - Chinese-English Dictionary",
@@ -25,7 +26,10 @@ export default function RootLayout({
 
   return (
     <html lang="zh" className={`theme-${theme}`}>
-      <body className="bg-gray-100 text-gray-900 min-h-screen font-sans">{children}</body>
+      <body className="bg-gray-100 text-gray-900 min-h-screen font-sans">
+        <Header />
+        {children}
+      </body>
     </html>
   );
 }
