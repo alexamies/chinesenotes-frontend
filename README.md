@@ -17,3 +17,54 @@ The frontend for a Chinese-English dictionary. New implementation of the web app
  ```
 
  and set the SITE_THEME variable.
+
+ ## Deployment
+
+ These are the instructions for deployment to Google Cloud Run.
+
+ Check the gcloud configuration:
+
+ ```shell
+gcloud config list
+```
+
+Make a new configuration called `chinesenotes-demo`:
+
+```shell
+gcloud config configurations create chinesenotes-demo
+```
+
+Activate it:
+
+```shell
+gcloud config configurations activate chinesenotes-demo
+```
+
+Initialize the settings:
+
+```shell
+gcloud init
+```
+
+Build the full dictionary locally before deploying (requires the
+`../chinesenotes.com` repo to be checked out alongside this one):
+
+```shell
+node scripts/copy-dictionary.mjs
+```
+
+This writes `data/dictionary.json` from the chinesenotes.com TSV. The
+`.gcloudignore` file keeps `data/` out of `.gitignore` exclusions so
+Cloud Build receives the pre-built dictionary. Without this step Cloud
+Build would fall back to the small example dictionary.
+
+Deploy the app to Cloud Run:
+
+```shell
+PROJECT_ID=[Your project]
+SERVICE=chinesenotes-demo
+REGION=us-central1
+gcloud run deploy --platform=managed $SERVICE \
+  --region=$REGION \
+  --allow-unauthenticated
+```

@@ -8,11 +8,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ found: false }, { status: 400 });
   }
 
-  const entry = lookupTerm(term);
+  const entries = lookupTerm(term);
 
-  if (!entry) {
+  if (!entries) {
     return NextResponse.json({ found: false }, { status: 404 });
   }
 
-  return NextResponse.json({ found: true, entry });
+  return NextResponse.json({ found: true, entries });
 }

@@ -7,8 +7,9 @@ export interface DictionaryEntry {
   h: string; // headword number
   n?: string; // notes
   d?: string; // domain
+  sd?: string; // subdomain
 }
 
 export type LookupResult =
-  | { found: true; entry: DictionaryEntry }
+  | { found: true; entries: DictionaryEntry[] }
   | { found: false };
