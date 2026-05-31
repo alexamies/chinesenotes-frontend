@@ -34,6 +34,12 @@ Make a new configuration called `chinesenotes-demo`:
 gcloud config configurations create chinesenotes-demo
 ```
 
+List configurations:
+
+```shell
+gcloud config configurations list
+```
+
 Activate it:
 
 ```shell
@@ -61,10 +67,10 @@ Build would fall back to the small example dictionary.
 Deploy the app to Cloud Run:
 
 ```shell
-PROJECT_ID=[Your project]
 SERVICE=chinesenotes-demo
 REGION=us-central1
 gcloud run deploy --platform=managed $SERVICE \
+  --source . \
   --region=$REGION \
   --allow-unauthenticated
 ```

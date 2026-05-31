@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DictionaryLookup from "@/components/DictionaryLookup";
 import DictionaryResults from "@/components/DictionaryResults";
 import type { LookupResult } from "@/types/dictionary";
 
-export default function DictionaryApp() {
+interface DictionaryAppProps {
+  initialQuery?: string;
+}
+
+export default function DictionaryApp({ initialQuery }: DictionaryAppProps) {
   const [searchText, setSearchText] = useState<string | null>(null);
   const [lookupResult, setLookupResult] = useState<LookupResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -27,11 +31,18 @@ export default function DictionaryApp() {
     }
   }
 
+  useEffect(() => {
+    if (initialQuery) {
+      handleSearch(initialQuery);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="bg-white rounded-lg shadow p-8">
       <h2 className="text-base font-medium text-gray-500 mb-4">Enter a Chinese word or phrase to look up its English meaning.</h2>
 
-      <DictionaryLookup onSearchTextChange={handleSearch} />
+      <DictionaryLookup initialValue={initialQuery ?? ""} onSearchTextChange={handleSearch} />
 
       <DictionaryResults
         searchText={searchText}

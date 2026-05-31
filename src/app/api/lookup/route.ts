@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { lookupTerm } from "@/lib/dictionary";
+import { segmentText } from "@/lib/segmentation";
 
 export async function GET(request: NextRequest) {
   const term = request.nextUrl.searchParams.get("term");
@@ -8,11 +9,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ found: false }, { status: 400 });
   }
 
-  const entries = lookupTerm(term);
+  const segments = segmentText(term, lookupTerm);
 
-  if (!entries) {
-    return NextResponse.json({ found: false }, { status: 404 });
-  }
-
-  return NextResponse.json({ found: true, entries });
+  return NextResponse.json({ found: true, segments });
 }

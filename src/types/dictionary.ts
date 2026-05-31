@@ -10,6 +10,11 @@ export interface DictionaryEntry {
   sd?: string; // subdomain
 }
 
+export interface Segment {
+  text: string;
+  entries: DictionaryEntry[] | null; // null if not found in dictionary
+}
+
 export type LookupResult =
-  | { found: true; entries: DictionaryEntry[] }
+  | { found: true; segments: Segment[] }
   | { found: false };

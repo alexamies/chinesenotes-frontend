@@ -4,10 +4,11 @@ import { useState } from "react";
 
 interface DictionaryLookupProps {
   onSearchTextChange: (value: string) => void;
+  initialValue?: string;
 }
 
-export default function DictionaryLookup({ onSearchTextChange }: DictionaryLookupProps) {
-  const [inputText, setInputText] = useState("");
+export default function DictionaryLookup({ onSearchTextChange, initialValue = "" }: DictionaryLookupProps) {
+  const [inputText, setInputText] = useState(initialValue);
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
