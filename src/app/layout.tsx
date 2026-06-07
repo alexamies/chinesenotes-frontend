@@ -20,10 +20,19 @@ const THEME_ICONS: Record<Theme, { url: string; type: string }> = {
   hbreader:     { url: "/hbicon.png", type: "image/png" },
 };
 
-const _icon = THEME_ICONS[resolveTheme()];
+const THEME_TITLES: Record<Theme, string> = {
+  demo:         "Chinese-English Dictionary Demo",
+  chinesenotes: "Chinese Notes Chinese-English Dictionary 中文笔记汉英词典",
+  ntireader:    "NTI Reader Chinese-English Buddhist Dictionary",
+  hbreader:     "HB Reader Chinese-English Buddhist Dictionary",
+};
+
+const _theme = resolveTheme();
+const _icon = THEME_ICONS[_theme];
+const _title = THEME_TITLES[_theme];
 
 export const metadata: Metadata = {
-  title: "Chinese Notes - Chinese-English Dictionary",
+  title: _title,
   description: "Look up Chinese words and phrases in English",
   icons: { icon: [_icon] },
 };
@@ -35,10 +44,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const theme = resolveTheme();
-
   return (
-    <html lang="zh" className={`theme-${theme}`}>
+    <html lang="zh" className={`theme-${_theme}`}>
       <head>
         {/* Google tag (gtag.js) */}
         <Script
@@ -56,7 +63,7 @@ export default function RootLayout({
         </Script>
       </head>
       <body className="bg-gray-100 text-gray-900 min-h-screen font-sans flex flex-col">
-        <Header />
+        <Header title={_title} />
         <main className="flex-1">{children}</main>
         <footer className="mt-8 py-4 px-6 text-center text-sm text-gray-500 border-t border-gray-200 bg-white">
           Copyright Fo Guang Shan 佛光山 2013-2026. Last updated on {BUILD_DATE}.{" "}
