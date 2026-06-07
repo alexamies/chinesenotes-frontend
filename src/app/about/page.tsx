@@ -17,19 +17,6 @@ export default function AboutPage() {
           contemporary sources.
         </p>
 
-        <h3 className="text-xl font-semibold text-gray-800 mt-8 mb-2">Supported sites</h3>
-        <ul className="list-disc list-inside space-y-1">
-          <li>
-            <strong>chinesenotes.com</strong> — general Chinese–English dictionary
-          </li>
-          <li>
-            <strong>ntireader.org</strong> — reader focused on Buddhist and classical texts
-          </li>
-          <li>
-            <strong>hbreader.org</strong> — reader for historical and literary Chinese
-          </li>
-        </ul>
-
         <h3 className="text-xl font-semibold text-gray-800 mt-8 mb-2">How to use</h3>
         <ol className="list-decimal list-inside space-y-1">
           <li>Type a Chinese word, phrase, or character into the search field.</li>

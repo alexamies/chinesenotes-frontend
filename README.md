@@ -67,10 +67,11 @@ Build would fall back to the small example dictionary.
 Deploy the app to Cloud Run:
 
 ```shell
-SERVICE=chinesenotes-demo
+SERVICE=chinesenotes-frontend
 REGION=us-central1
 gcloud run deploy --platform=managed $SERVICE \
   --source . \
   --region=$REGION \
+  --env-vars-file envvars.yaml \
   --allow-unauthenticated
 ```
