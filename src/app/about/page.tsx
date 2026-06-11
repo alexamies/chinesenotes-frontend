@@ -8,7 +8,7 @@ export default function AboutPage() {
           <strong>Chinese Notes</strong> is a Chinese–English dictionary and reading tool designed to
           help learners and researchers explore classical and modern Chinese texts. It covers
           vocabulary from a wide range of domains, including everyday language, literary Chinese,
-          Buddhist scriptures, and historical documents.
+          and historical documents.
         </p>
 
         <p>
@@ -27,7 +27,8 @@ export default function AboutPage() {
         <h3 className="text-xl font-semibold text-gray-800 mt-8 mb-2">Open source</h3>
         <p>
           The dictionary data and application source code are open source. Contributions, corrections,
-          and feedback are welcome via the project repository.
+          and feedback are welcome via the <a href="https://github.com/alexamies/chinesenotes-frontend"
+          >project repository</a>.
         </p>
       </section>
     </main>
