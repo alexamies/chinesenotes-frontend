@@ -1,10 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCatalog, getWork, getChapters, getChapterTitle, getChapterText } from "@/lib/corpus";
-import { segmentText } from "@/lib/segmentation";
-import { lookupTerm } from "@/lib/dictionary";
-import ChapterReader from "@/components/ChapterReader";
-import type { TextSegment } from "@/components/ChapterReader";
 
 export async function generateStaticParams() {
   const catalog = await getCatalog();
@@ -17,6 +13,10 @@ export async function generateStaticParams() {
   }
   return params;
 }
+import { segmentText } from "@/lib/segmentation";
+import { lookupTerm } from "@/lib/dictionary";
+import ChapterReader from "@/components/ChapterReader";
+import type { TextSegment } from "@/components/ChapterReader";
 
 interface PageProps {
   params: Promise<{ bookId: string; chapter: string }>;
