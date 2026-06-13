@@ -1,0 +1,11 @@
+[
+  {
+    "id": "xiyouji",
+    "titleChinese": "西遊記",
+    "titleEnglish": "Journey to the West",
+    "author": "吳承恩",
+    "description": "Classic Chinese novel about the pilgrimage of the monk Xuanzang to India.",
+    "libraries": ["chinesenotes", "demo"],
+    "indexFile": "index/xiyouji.csv"
+  }
+]
