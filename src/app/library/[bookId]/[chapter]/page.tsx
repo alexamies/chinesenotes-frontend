@@ -1,22 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCatalog, getWork, getChapters, getChapterTitle, getChapterText } from "@/lib/corpus";
-
-export async function generateStaticParams() {
-  const catalog = await getCatalog();
-  const params: { bookId: string; chapter: string }[] = [];
-  for (const work of catalog) {
-    const chapters = await getChapters(work);
-    for (const { chapterId } of chapters) {
-      params.push({ bookId: work.id, chapter: chapterId });
-    }
-  }
-  return params;
-}
+import { getWork, getChapterTitle, getChapterText } from "@/lib/corpus";
 import { segmentText } from "@/lib/segmentation";
+
 import { lookupTerm } from "@/lib/dictionary";
 import ChapterReader from "@/components/ChapterReader";
 import type { TextSegment } from "@/components/ChapterReader";
+
+// Chapter text is fetched from GCS at request time and cached for 24 hours.
+export const revalidate = 86400;
 
 interface PageProps {
   params: Promise<{ bookId: string; chapter: string }>;

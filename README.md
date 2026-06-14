@@ -50,16 +50,32 @@ If the TSV is not present, the script falls back to `assets/example_dictionary.j
 
 ### Corpus
 
-Library texts live under `corpus/`:
+The library feature is driven by the [chinesenotes.com](https://github.com/alexamies/chinesenotes.com) corpus. For local development, check out that repo as a sibling directory:
 
 ```
-corpus/
-  catalog.json          # master list of all works; controls which sites see which texts
-  index/<work>.csv      # tab-separated chapter list for each work
-  content/<work>/       # plain-text chapter files
+../chinesenotes.com/
+  data/corpus/
+    collections.csv     # master list of all works (one per line, tab-separated)
+    daodejing.csv       # per-book chapter index (one per work)
+    lunyu.csv
+    ...
 ```
 
-To add a new text: add an entry to `catalog.json`, drop its chapter index CSV in `corpus/index/`, and add the `.txt` chapter files in `corpus/content/<id>/`. The next build discovers and pre-renders all pages automatically.
+`collections.csv` columns (tab-separated):
+
+```
+csvFile  htmlFile  title  description  introFile  corpus  language  period  genre
+```
+
+Each per-book CSV lists chapters:
+
+```
+sourcePath  htmlPath  chapterTitle
+```
+
+where `sourcePath` is of the form `bookId/chapterId.txt` — the same path used to fetch the file from the GCS bucket `chinesenotes-text`.
+
+Chapter text files are **not** stored in git. They live in the GCS bucket `gs://chinesenotes-text` and are fetched at request time using Application Default Credentials (your local `gcloud auth application-default login` in dev; the Cloud Run service account in production).
 
 ## Project structure
 
@@ -68,11 +84,11 @@ src/
   app/
     page.tsx                        # dictionary home page
     library/
-      page.tsx                      # library index (filtered by SITE_THEME)
+      page.tsx                      # library index (lists all works from collections.csv)
       [bookId]/
-        page.tsx                    # chapter list
+        page.tsx                    # chapter list (pre-rendered for all books at build time)
         [chapter]/
-          page.tsx                  # chapter reader (server-segments text)
+          page.tsx                  # chapter reader (ISR, fetches text from GCS at request time)
     api/lookup/route.ts             # dictionary lookup API
     entry/[term]/page.tsx           # full entry detail page
   components/
@@ -80,7 +96,8 @@ src/
     DictionaryApp.tsx               # search input + results
     Header.tsx / HamburgerMenu.tsx  # site chrome
   lib/
-    corpus.ts                       # reads catalog.json and chapter files at build time
+    corpus.ts                       # reads collections.csv and per-book CSVs; fetches chapter
+                                    # text from GCS via @google-cloud/storage
     dictionary.ts                   # loads dictionary index from data/dictionary.json
     segmentation.ts                 # greedy longest-match segmentation
 ```
@@ -106,6 +123,16 @@ gcloud artifacts repositories create cloud-run-source-deploy \
   --repository-format docker --location us-central1
 ```
 
+Grant the Cloud Run service account read access to the GCS text bucket:
+
+```shell
+gcloud storage buckets add-iam-policy-binding gs://chinesenotes-text \
+  --member=serviceAccount:<SERVICE_ACCOUNT_EMAIL> \
+  --role=roles/storage.objectViewer
+```
+
+Chapter pages are rendered at request time (ISR, 24-hour cache) and fetch text from `gs://chinesenotes-text` using the Cloud Run service account credentials.
+
 ### Building the dictionary before deploying
 
 The full dictionary must be built locally before submitting to Cloud Build, because the source TSV is not available there:
@@ -124,7 +151,7 @@ gcloud builds submit --config cloudbuild.yaml .
 
 This runs three Cloud Build steps:
 
-1. `docker build` — builds the image with `--build-arg SITE_THEME=chinesenotes`
+1. `docker build` — clones the corpus CSV index files from `github.com/alexamies/chinesenotes.com` (sparse checkout of `data/corpus` only), then builds the Next.js app with `--build-arg SITE_THEME=chinesenotes`
 2. `docker push` — pushes to Artifact Registry
 3. `gcloud run deploy` — deploys to Cloud Run and sets `SITE_THEME` as a runtime env var
 
@@ -140,9 +167,18 @@ gcloud builds submit --config cloudbuild.yaml \
   --substitutions _SITE_THEME=hbreader,_SERVICE_NAME=hbreader-frontend .
 ```
 
+### Rendering strategy
+
+| Route | Strategy | Data source |
+|---|---|---|
+| `/library` | Static (build time) | `collections.csv` cloned in Dockerfile |
+| `/library/[bookId]` | Static (build time) | per-book `.csv` cloned in Dockerfile |
+| `/library/[bookId]/[chapter]` | ISR (24 h cache) | GCS bucket `chinesenotes-text` at request time |
+| `/entry/[term]` | Static (build time) | `data/dictionary.json` |
+
 ### Why SITE_THEME is a build-time argument
 
-Next.js pre-renders static and SSG pages at `npm run build` time. If `SITE_THEME` were only a Cloud Run runtime variable it would not be visible during the build, and pre-rendered pages would fall back to the `demo` theme. Passing it as a Docker `ARG` and `ENV` before `npm run build` ensures the theme is baked correctly into all 100+ pre-rendered library pages.
+Next.js pre-renders static and SSG pages at `npm run build` time. If `SITE_THEME` were only a Cloud Run runtime variable it would not be visible during the build, and pre-rendered pages would fall back to the `demo` theme. Passing it as a Docker `ARG` and `ENV` before `npm run build` ensures the theme is baked correctly into all pre-rendered library and entry pages.
 
 ## Available commands
 
