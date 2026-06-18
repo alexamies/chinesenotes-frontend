@@ -2,17 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSession, verifySession } from "@/lib/session";
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
-  const response = NextResponse.next();
-
+  const { pathname } = request.nextUrl;
   const existing = request.cookies.get("cn_sid");
-  let needsNew = !existing;
 
+  let hasValidSession = false;
   if (existing) {
     const id = await verifySession(existing.value);
-    if (!id) needsNew = true;
+    hasValidSession = id !== null;
   }
 
-  if (needsNew) {
+  // Library pages require a session established from a prior page visit.
+  // Cold requests (curl, no cookie) are redirected to the home page, where
+  // the browser picks up the session cookie before accessing library content.
+  if (!hasValidSession && pathname.startsWith("/library")) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  const response = NextResponse.next();
+
+  if (!hasValidSession) {
     const { value } = await createSession();
     response.cookies.set("cn_sid", value, {
       httpOnly: true,
@@ -27,6 +35,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  // Run on every route except Next.js internals and static files.
   matcher: ["/((?!_next/static|_next/image|favicon\\.ico|.*\\.svg|.*\\.png|.*\\.ico).*)"],
 };
