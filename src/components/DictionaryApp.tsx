@@ -4,9 +4,18 @@ import { useState, useEffect } from "react";
 import DictionaryLookup from "@/components/DictionaryLookup";
 import DictionaryResults from "@/components/DictionaryResults";
 import type { LookupResult } from "@/types/dictionary";
+import { getRecaptchaToken, isKnownOverThreshold, updateInteractionCount } from "@/lib/recaptcha";
 
 interface DictionaryAppProps {
   initialQuery?: string;
+}
+
+async function fetchLookup(term: string, recaptchaToken: string | null): Promise<Response> {
+  let url = `/api/lookup?term=${encodeURIComponent(term)}`;
+  if (recaptchaToken) {
+    url += `&recaptchaToken=${encodeURIComponent(recaptchaToken)}&recaptchaAction=lookup`;
+  }
+  return fetch(url);
 }
 
 export default function DictionaryApp({ initialQuery }: DictionaryAppProps) {
@@ -22,8 +31,32 @@ export default function DictionaryApp({ initialQuery }: DictionaryAppProps) {
     if (!term) return;
 
     try {
-      const response = await fetch(`/api/lookup?term=${encodeURIComponent(term)}`);
+      // Pre-fetch a token when we already know we're over the threshold.
+      const token = isKnownOverThreshold() ? await getRecaptchaToken("lookup") : null;
+      let response = await fetchLookup(term, token);
+
+      // The server enforces the threshold and returns 403 {requiresRecaptcha: true}
+      // when the count has crossed over but the client didn't know yet. Retry once.
+      if (response.status === 403 && !token) {
+        const retryToken = await getRecaptchaToken("lookup");
+        if (retryToken) {
+          response = await fetchLookup(term, retryToken);
+        }
+      }
+
+      if (response.status === 401) {
+        setErrorMessage("Session expired. Please refresh the page.");
+        return;
+      }
+      if (response.status === 403) {
+        setErrorMessage("Security check failed. Please try again.");
+        return;
+      }
+
       const data: LookupResult = await response.json();
+      if (data.interactionCount !== undefined) {
+        updateInteractionCount(data.interactionCount);
+      }
       setLookupResult(data);
     } catch (err) {
       console.error("Dictionary lookup failed:", err);

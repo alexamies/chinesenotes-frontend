@@ -10,6 +10,7 @@ Built with Next.js 16 App Router and TypeScript. The same codebase serves all th
 - **Text segmentation** — greedy longest-match segmentation of Chinese input into dictionary words
 - **Library reader** — browse classical texts chapter by chapter; click any word to see its definition inline
 - **Multi-site theming** — `demo`, `chinesenotes`, `ntireader`, `hbreader` themes via a single env var
+- **Bot protection** — signed session cookies block direct API scraping; interaction counts stored in Firestore enforce Google reCAPTCHA Enterprise after 25 requests per session per day
 
 ## Development
 
@@ -21,11 +22,25 @@ Install dependencies:
 npm install
 ```
 
-Copy the example env file and set a theme:
+Copy the example env file and fill in the required values:
 
 ```shell
 cp .env.local.example .env.local
-# Edit .env.local and set SITE_THEME to one of: demo | chinesenotes | ntireader | hbreader
+```
+
+Key variables (see `.env.local.example` for the full list and comments):
+
+| Variable | Required locally | Description |
+|---|---|---|
+| `SITE_THEME` | No (defaults to `demo`) | `demo` \| `chinesenotes` \| `ntireader` \| `hbreader` |
+| `SESSION_SECRET` | Yes (for bot protection) | 32-byte hex secret — generate with `openssl rand -hex 32` |
+| `GOOGLE_CLOUD_PROJECT` | Yes (for Firestore + reCAPTCHA) | GCP project ID — set automatically by Cloud Run in production |
+| `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` | No (disables reCAPTCHA if unset) | Score-based reCAPTCHA Enterprise site key |
+
+Firestore and reCAPTCHA Enterprise both use Application Default Credentials. Authenticate locally with:
+
+```shell
+gcloud auth application-default login
 ```
 
 Start the dev server:
@@ -87,29 +102,54 @@ where `sourcePath` is of the form `bookId/chapterId.txt` — the same path used 
 
 Chapter text files are **not** stored in git. They live in the GCS bucket `gs://chinesenotes-text` and are fetched at request time using Application Default Credentials (your local `gcloud auth application-default login` in dev; the Cloud Run service account in production).
 
+## Bot protection
+
+Every browser that loads any page receives a signed `HttpOnly SameSite=Strict` session cookie (`cn_sid`) set by the Next.js proxy layer. The cookie value is `{uuid}.{HMAC-SHA256(SESSION_SECRET, uuid)}`.
+
+Every request to `/api/lookup` must present this cookie. The server:
+
+1. Verifies the HMAC signature — forged cookies are rejected with 403.
+2. Atomically increments a per-session daily counter in Firestore (`sessions/{sessionId}` → `{ count, date }`). The counter resets to 1 when the date changes.
+3. Once `count > 25`, a valid reCAPTCHA Enterprise token must accompany the request. The token is verified server-side using the Cloud Run service account (ADC) — no API key is needed.
+
+Direct HTTP scrapers (curl, Python requests, etc.) that never load a page will not have a session cookie and receive 401. Scrapers that do manage cookies are subject to Firestore counting and reCAPTCHA scoring.
+
+The client tracks the last `interactionCount` returned by the server so it can proactively fetch a reCAPTCHA token before hitting the threshold. A one-shot retry path handles the edge case where a browser session resumes mid-day above the threshold.
+
+"Details →" link clicks in search results are also tracked via a fire-and-forget `POST /api/interact` call so they count toward the daily total alongside searches and chapter-reader taps.
+
 ## Project structure
 
 ```
 src/
+  proxy.ts                            # sets the signed session cookie on every response
   app/
-    page.tsx                        # dictionary home page
+    page.tsx                          # dictionary home page
     library/
-      page.tsx                      # library index (lists all works from collections.csv)
+      page.tsx                        # library index (lists all works from collections.csv)
       [bookId]/
-        page.tsx                    # chapter list (pre-rendered for all books at build time)
+        page.tsx                      # chapter list (pre-rendered for all books at build time)
         [chapter]/
-          page.tsx                  # chapter reader (ISR, fetches text from GCS at request time)
-    api/lookup/route.ts             # dictionary lookup API
-    entry/[term]/page.tsx           # full entry detail page
+          page.tsx                    # chapter reader (ISR, fetches text from GCS at request time)
+    api/
+      lookup/route.ts                 # dictionary lookup API (session-gated, Firestore-counted,
+                                      # reCAPTCHA-enforced above threshold)
+      interact/route.ts               # records a link-click interaction in Firestore
+    entry/[term]/page.tsx             # full entry detail page
   components/
-    ChapterReader.tsx               # interactive reader (click word → definition panel)
-    DictionaryApp.tsx               # search input + results
-    Header.tsx / HamburgerMenu.tsx  # site chrome
+    ChapterReader.tsx                 # interactive reader (click word → definition panel)
+    DictionaryApp.tsx                 # search input + results
+    TrackedLink.tsx                   # <Link> wrapper that posts to /api/interact on click
+    Header.tsx / HamburgerMenu.tsx    # site chrome
   lib/
-    corpus.ts                       # reads collections.csv and per-book CSVs; fetches chapter
-                                    # text from GCS via @google-cloud/storage
-    dictionary.ts                   # loads dictionary index from data/dictionary.json
-    segmentation.ts                 # greedy longest-match segmentation
+    corpus.ts                         # reads collections.csv and per-book CSVs; fetches chapter
+                                      # text from GCS via @google-cloud/storage
+    dictionary.ts                     # loads dictionary index from data/dictionary.json
+    firestore.ts                      # Firestore client; incrementInteraction()
+    recaptcha.ts                      # client-side reCAPTCHA token helper; threshold state
+    segmentation.ts                   # greedy longest-match segmentation
+    session.ts                        # session cookie generation and HMAC verification
+                                      # (Web Crypto API — works in Edge proxy and Node.js)
 ```
 
 ## Deployment
@@ -137,8 +177,41 @@ Grant the Cloud Run service account read access to the GCS text bucket:
 
 ```shell
 gcloud storage buckets add-iam-policy-binding gs://chinesenotes-text \
-  --member=serviceAccount:<SERVICE_ACCOUNT_EMAIL> \
+  --member=serviceAccount:${SERVICE_ACCOUNT_EMAIL} \
   --role=roles/storage.objectViewer
+```
+
+Grant the Cloud Run service account access to Firestore:
+
+```shell
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member=serviceAccount:${SERVICE_ACCOUNT_EMAIL} \
+  --role=roles/datastore.user
+```
+
+Grant the Cloud Run service account access to reCAPTCHA Enterprise (to create assessments):
+
+```shell
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+  --member=serviceAccount:${SERVICE_ACCOUNT_EMAIL} \
+  --role=roles/recaptchaenterprise.agent
+```
+
+Store `SESSION_SECRET` in Secret Manager and grant the Cloud Run service account access to it:
+
+```shell
+echo -n "$SESSION_SECRET" | gcloud secrets create session-secret --data-file=-
+gcloud secrets add-iam-policy-binding session-secret \
+  --member=serviceAccount:${SERVICE_ACCOUNT_EMAIL} \
+  --role=roles/secretmanager.secretAccessor
+```
+
+Mount the secret and set `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` on the Cloud Run service. `GOOGLE_CLOUD_PROJECT` is injected automatically by Cloud Run and does not need to be set manually.
+
+```shell
+gcloud run services update ${SERVICE_NAME} \
+  --update-secrets SESSION_SECRET=session-secret:latest \
+  --update-env-vars NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${SITE_KEY}
 ```
 
 Chapter pages are rendered at request time (ISR, 24-hour cache) and fetch text from `gs://chinesenotes-text` using the Cloud Run service account credentials.

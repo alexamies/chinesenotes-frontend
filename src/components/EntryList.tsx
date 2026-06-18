@@ -1,4 +1,4 @@
-import Link from "next/link";
+import TrackedLink from "@/components/TrackedLink";
 import type { Segment } from "@/types/dictionary";
 
 interface EntryListProps {
@@ -39,12 +39,12 @@ export default function EntryList({ segments }: EntryListProps) {
                   {firstSense}
                 </td>
                 <td className="py-3 text-right whitespace-nowrap">
-                  <Link
+                  <TrackedLink
                     href={`/entry/${encodeURIComponent(segment.text)}`}
                     className="text-sm font-medium text-primary hover:underline"
                   >
                     Details →
-                  </Link>
+                  </TrackedLink>
                 </td>
               </tr>
             );

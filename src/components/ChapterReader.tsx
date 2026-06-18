@@ -3,6 +3,7 @@
 import { useState } from "react";
 import EntryDetail from "@/components/EntryDetail";
 import type { DictionaryEntry, LookupResult } from "@/types/dictionary";
+import { getRecaptchaToken, isKnownOverThreshold, updateInteractionCount } from "@/lib/recaptcha";
 
 export interface TextSegment {
   text: string;
@@ -12,6 +13,14 @@ export interface TextSegment {
 interface ChapterReaderProps {
   title: string;
   paragraphs: TextSegment[][];
+}
+
+async function fetchLookup(text: string, recaptchaToken: string | null): Promise<Response> {
+  let url = `/api/lookup?term=${encodeURIComponent(text)}`;
+  if (recaptchaToken) {
+    url += `&recaptchaToken=${encodeURIComponent(recaptchaToken)}&recaptchaAction=lookup`;
+  }
+  return fetch(url);
 }
 
 export default function ChapterReader({ title, paragraphs }: ChapterReaderProps) {
@@ -28,11 +37,24 @@ export default function ChapterReader({ title, paragraphs }: ChapterReaderProps)
     setActiveText(text);
     setEntries([]);
     setLoading(true);
+
     try {
-      const res = await fetch(`/api/lookup?term=${encodeURIComponent(text)}`);
-      const data: LookupResult = await res.json();
-      if (data.found) {
-        setEntries(data.segments.flatMap((s) => s.entries ?? []));
+      const token = isKnownOverThreshold() ? await getRecaptchaToken("lookup") : null;
+      let res = await fetchLookup(text, token);
+
+      if (res.status === 403 && !token) {
+        const retryToken = await getRecaptchaToken("lookup");
+        if (retryToken) res = await fetchLookup(text, retryToken);
+      }
+
+      if (res.ok) {
+        const data: LookupResult = await res.json();
+        if (data.interactionCount !== undefined) {
+          updateInteractionCount(data.interactionCount);
+        }
+        if (data.found) {
+          setEntries(data.segments.flatMap((s) => s.entries ?? []));
+        }
       }
     } finally {
       setLoading(false);

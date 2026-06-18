@@ -38,6 +38,7 @@ export const metadata: Metadata = {
 };
 
 const BUILD_DATE = new Date().toISOString().slice(0, 10);
+const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
 
 export default function RootLayout({
   children,
@@ -61,6 +62,12 @@ export default function RootLayout({
             gtag('config', 'G-03MVHHCXJ6');
           `}
         </Script>
+        {RECAPTCHA_SITE_KEY && (
+          <Script
+            src={`https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`}
+            strategy="afterInteractive"
+          />
+        )}
       </head>
       <body className="bg-gray-100 text-gray-900 min-h-screen font-sans flex flex-col">
         <Header title={_title} />
