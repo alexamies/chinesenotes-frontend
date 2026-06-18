@@ -34,7 +34,8 @@ export async function getRecaptchaToken(action: string): Promise<string | null> 
       try {
         const token = await window.grecaptcha.enterprise.execute(siteKey, { action });
         resolve(token);
-      } catch {
+      } catch (err) {
+        console.warn("[recaptcha] grecaptcha.execute failed", { action, err });
         resolve(null);
       }
     });

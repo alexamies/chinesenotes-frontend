@@ -31,26 +31,47 @@ async function verifyRecaptchaToken(token: string, action: string): Promise<bool
         event: { token, siteKey: RECAPTCHA_SITE_KEY, expectedAction: action },
       }),
     });
-    if (!res.ok) return false;
+    if (!res.ok) {
+      console.warn("[lookup] reCAPTCHA API returned non-OK status", {
+        status: res.status,
+        action,
+      });
+      return false;
+    }
     const data = await res.json();
-    return (
-      data.tokenProperties?.valid === true &&
-      (data.riskAnalysis?.score ?? 0) >= RECAPTCHA_SCORE_THRESHOLD
-    );
-  } catch {
+    const tokenValid = data.tokenProperties?.valid === true;
+    const score = data.riskAnalysis?.score ?? 0;
+    if (!tokenValid || score < RECAPTCHA_SCORE_THRESHOLD) {
+      console.warn("[lookup] reCAPTCHA assessment rejected", {
+        tokenValid,
+        score,
+        action,
+        invalidReason: data.tokenProperties?.invalidReason,
+      });
+    }
+    return tokenValid && score >= RECAPTCHA_SCORE_THRESHOLD;
+  } catch (err) {
     // Fail open: don't block legitimate users if reCAPTCHA is unreachable.
+    console.error("[lookup] reCAPTCHA verification threw, failing open", err);
     return true;
   }
 }
 
 export async function GET(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
   // --- Session validation ---
   const sessionCookie = request.cookies.get("cn_sid");
   if (!sessionCookie) {
+    console.warn("[lookup] 401 no session cookie", { ip });
     return NextResponse.json({ found: false }, { status: 401 });
   }
   const sessionId = await verifySession(sessionCookie.value);
   if (!sessionId) {
+    console.warn("[lookup] 403 invalid session signature", {
+      ip,
+      cookiePrefix: sessionCookie.value.slice(0, 12),
+    });
     return NextResponse.json({ found: false }, { status: 403 });
   }
 
@@ -69,6 +90,11 @@ export async function GET(request: NextRequest) {
     const recaptchaToken = searchParams.get("recaptchaToken");
     const recaptchaAction = searchParams.get("recaptchaAction") ?? "lookup";
     if (!recaptchaToken) {
+      console.warn("[lookup] 403 reCAPTCHA required but token missing", {
+        ip,
+        sessionId,
+        interactionCount,
+      });
       return NextResponse.json(
         { found: false, requiresRecaptcha: true, interactionCount },
         { status: 403 }
@@ -76,6 +102,12 @@ export async function GET(request: NextRequest) {
     }
     const valid = await verifyRecaptchaToken(recaptchaToken, recaptchaAction);
     if (!valid) {
+      console.warn("[lookup] 403 reCAPTCHA verification failed", {
+        ip,
+        sessionId,
+        interactionCount,
+        recaptchaAction,
+      });
       return NextResponse.json(
         { found: false, error: "reCAPTCHA verification failed", interactionCount },
         { status: 403 }

@@ -39,6 +39,9 @@ export default function DictionaryApp({ initialQuery }: DictionaryAppProps) {
       // when the count has crossed over but the client didn't know yet. Retry once.
       if (response.status === 403 && !token) {
         const retryToken = await getRecaptchaToken("lookup");
+        if (!retryToken) {
+          console.warn("[DictionaryApp] 403 retry skipped: getRecaptchaToken returned null");
+        }
         if (retryToken) {
           response = await fetchLookup(term, retryToken);
         }
@@ -49,6 +52,12 @@ export default function DictionaryApp({ initialQuery }: DictionaryAppProps) {
         return;
       }
       if (response.status === 403) {
+        let body: unknown;
+        try { body = await response.clone().json(); } catch { body = null; }
+        console.warn("[DictionaryApp] Security check failed (403)", {
+          hadInitialToken: !!token,
+          responseBody: body,
+        });
         setErrorMessage("Security check failed. Please try again.");
         return;
       }
