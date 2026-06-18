@@ -24,10 +24,30 @@ declare global {
   }
 }
 
+function waitForGrecaptcha(timeoutMs = 5000): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  if (window.grecaptcha?.enterprise) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const deadline = Date.now() + timeoutMs;
+    const poll = () => {
+      if (window.grecaptcha?.enterprise) { resolve(true); return; }
+      if (Date.now() >= deadline) { resolve(false); return; }
+      setTimeout(poll, 100);
+    };
+    setTimeout(poll, 100);
+  });
+}
+
 export async function getRecaptchaToken(action: string): Promise<string | null> {
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
   if (!siteKey) return null;
-  if (typeof window === "undefined" || !window.grecaptcha?.enterprise) return null;
+  if (typeof window === "undefined") return null;
+
+  const available = await waitForGrecaptcha();
+  if (!available) {
+    console.warn("[recaptcha] grecaptcha.enterprise not available after timeout", { action });
+    return null;
+  }
 
   return new Promise<string | null>((resolve) => {
     window.grecaptcha.enterprise.ready(async () => {

@@ -32,11 +32,11 @@ async function verifyRecaptchaToken(token: string, action: string): Promise<bool
       }),
     });
     if (!res.ok) {
-      console.warn("[lookup] reCAPTCHA API returned non-OK status", {
+      console.error("[lookup] reCAPTCHA API returned non-OK status, failing open", {
         status: res.status,
         action,
       });
-      return false;
+      return true;
     }
     const data = await res.json();
     const tokenValid = data.tokenProperties?.valid === true;
