@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getWorksForLibrary } from "@/lib/corpus";
+import LibrarySearch from "@/components/LibrarySearch";
 
 export default async function LibraryPage() {
   const library = process.env.SITE_THEME ?? "demo";
@@ -9,6 +10,10 @@ export default async function LibraryPage() {
     <main className="max-w-2xl mx-auto mt-12 px-6 pb-16">
       <h2 className="text-3xl font-bold text-gray-900 mb-2">Library</h2>
       <p className="text-gray-500 mb-8">Browse texts available for reading and vocabulary lookup.</p>
+
+      <LibrarySearch />
+
+      <h3 className="text-lg font-semibold text-gray-800 mb-3">Browse</h3>
 
       {works.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 bg-white px-8 py-12 text-center text-gray-400">
