@@ -27,9 +27,25 @@ const THEME_TITLES: Record<Theme, string> = {
   hbreader:     "HB Reader Chinese-English Buddhist Dictionary",
 };
 
+const THEME_DISPLAY_TITLES: Record<Theme, string> = {
+  demo:         "Chinese-English Dictionary Demo",
+  chinesenotes: "Chinese Notes",
+  ntireader:    "NTI Reader",
+  hbreader:     "HB Reader",
+};
+
+const THEME_SUBTITLES: Record<Theme, string> = {
+  demo:         "",
+  chinesenotes: "Chinese-English dictionary",
+  ntireader:    "Chinese-English Buddhist dictionary",
+  hbreader:     "Chinese-English Buddhist dictionary",
+};
+
 const _theme = resolveTheme();
 const _icon = THEME_ICONS[_theme];
 const _title = THEME_TITLES[_theme];
+const _displayTitle = THEME_DISPLAY_TITLES[_theme];
+const _subtitle = THEME_SUBTITLES[_theme];
 
 export const metadata: Metadata = {
   title: _title,
@@ -48,7 +64,7 @@ export default function RootLayout({
   return (
     <html lang="zh" className={`theme-${_theme}`}>
       <body className="bg-gray-100 text-gray-900 min-h-screen font-sans flex flex-col">
-        <Header title={_title} />
+        <Header title={_displayTitle} subtitle={_subtitle} />
         <main className="flex-1">{children}</main>
         <footer className="mt-8 py-4 px-6 text-center text-sm text-gray-500 border-t border-gray-200 bg-white">
           Copyright Fo Guang Shan 佛光山 2013-2026. Last updated on {BUILD_DATE}.{" "}
