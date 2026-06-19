@@ -24,6 +24,7 @@ substitutions:
   _SERVICE_NAME: chinesenotes-frontend
   _REGION: us-central1
   _AR_REPO: cloud-run-source-deploy
+  _RECAPTCHA_SITE_KEY: ""
 
 steps:
   # Build the Docker image.  SITE_THEME is passed as a build arg so that
@@ -33,6 +34,7 @@ steps:
     args:
       - build
       - --build-arg=SITE_THEME=${_SITE_THEME}
+      - --build-arg=NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${_RECAPTCHA_SITE_KEY}
       - --tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${BUILD_ID}
       - --tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:latest
       - .

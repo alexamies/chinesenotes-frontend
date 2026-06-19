@@ -15,10 +15,12 @@ RUN apk add --no-cache git && \
       https://github.com/alexamies/chinesenotes.com.git /chinesenotes.com && \
     git -C /chinesenotes.com sparse-checkout set data/corpus
 
-# SITE_THEME is baked into statically pre-rendered pages at build time.
-# Pass via --build-arg so each site's image has the correct theme.
-ARG SITE_THEME=demo
+# SITE_THEME and NEXT_PUBLIC_RECAPTCHA_SITE_KEY are baked into statically
+# pre-rendered pages at build time. Pass via --build-arg.
+ARG SITE_THEME=chinesenotes
 ENV SITE_THEME=$SITE_THEME
+ARG NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+ENV NEXT_PUBLIC_RECAPTCHA_SITE_KEY=$NEXT_PUBLIC_RECAPTCHA_SITE_KEY
 
 RUN npm run build
 

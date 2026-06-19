@@ -62,7 +62,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh" className={`theme-${_theme}`}>
+    <html lang="en" className={`theme-${_theme}`} suppressHydrationWarning>
       <body className="bg-gray-100 text-gray-900 min-h-screen font-sans flex flex-col">
         <Header title={_displayTitle} subtitle={_subtitle} />
         <main className="flex-1">{children}</main>

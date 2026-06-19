@@ -38,8 +38,26 @@ function waitForGrecaptcha(timeoutMs = 5000): Promise<boolean> {
   });
 }
 
+function getSiteKey(): string | undefined {
+  // Prefer the build-time baked value; fall back to reading the key from the
+  // script URL that the server rendered, which works when the env var was only
+  // available at runtime (not at build time).
+  const baked = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  if (baked) return baked;
+  if (typeof document === "undefined") return undefined;
+  const src = document.querySelector<HTMLScriptElement>(
+    'script[src*="recaptcha/enterprise.js"]'
+  )?.src;
+  if (!src) return undefined;
+  try {
+    return new URL(src).searchParams.get("render") ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function getRecaptchaToken(action: string): Promise<string | null> {
-  const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  const siteKey = getSiteKey();
   if (!siteKey) return null;
   if (typeof window === "undefined") return null;
 
