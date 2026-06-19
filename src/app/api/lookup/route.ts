@@ -3,7 +3,7 @@ import { GoogleAuth } from "google-auth-library";
 import { lookupTerm } from "@/lib/dictionary";
 import { segmentText } from "@/lib/segmentation";
 import { verifySession } from "@/lib/session";
-import { incrementInteraction } from "@/lib/firestore";
+import { incrementInteraction, getRecaptchaStatus, recordRecaptchaResult } from "@/lib/firestore";
 
 const RECAPTCHA_PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT ?? "";
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
@@ -87,31 +87,41 @@ export async function GET(request: NextRequest) {
 
   // --- reCAPTCHA enforcement above threshold ---
   if (interactionCount > INTERACTION_THRESHOLD && RECAPTCHA_SITE_KEY) {
-    const recaptchaToken = searchParams.get("recaptchaToken");
-    const recaptchaAction = searchParams.get("recaptchaAction") ?? "lookup";
-    if (!recaptchaToken) {
-      console.warn("[lookup] 403 reCAPTCHA required but token missing", {
-        ip,
-        sessionId,
-        interactionCount,
-      });
-      return NextResponse.json(
-        { found: false, requiresRecaptcha: true, interactionCount },
-        { status: 403 }
-      );
+    const { humanVerified, botCount } = await getRecaptchaStatus(sessionId);
+
+    if (botCount >= 3) {
+      console.warn("[lookup] 403 session identified as bot", { ip, sessionId, botCount });
+      return NextResponse.json({ found: false, error: "Access denied" }, { status: 403 });
     }
-    const valid = await verifyRecaptchaToken(recaptchaToken, recaptchaAction);
-    if (!valid) {
-      console.warn("[lookup] 403 reCAPTCHA verification failed", {
-        ip,
-        sessionId,
-        interactionCount,
-        recaptchaAction,
-      });
-      return NextResponse.json(
-        { found: false, error: "reCAPTCHA verification failed", interactionCount },
-        { status: 403 }
-      );
+
+    if (!humanVerified) {
+      const recaptchaToken = searchParams.get("recaptchaToken");
+      const recaptchaAction = searchParams.get("recaptchaAction") ?? "lookup";
+      if (!recaptchaToken) {
+        console.warn("[lookup] 403 reCAPTCHA required but token missing", {
+          ip,
+          sessionId,
+          interactionCount,
+        });
+        return NextResponse.json(
+          { found: false, requiresRecaptcha: true, interactionCount },
+          { status: 403 }
+        );
+      }
+      const valid = await verifyRecaptchaToken(recaptchaToken, recaptchaAction);
+      await recordRecaptchaResult(sessionId, valid);
+      if (!valid) {
+        console.warn("[lookup] 403 reCAPTCHA verification failed", {
+          ip,
+          sessionId,
+          interactionCount,
+          recaptchaAction,
+        });
+        return NextResponse.json(
+          { found: false, error: "reCAPTCHA verification failed", interactionCount },
+          { status: 403 }
+        );
+      }
     }
   }
 

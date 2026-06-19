@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   icons: { icon: [_icon] },
 };
 
-const BUILD_DATE = new Date().toISOString().slice(0, 10);
+const BUILD_DATE = new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC";
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
 
 export default function RootLayout({
@@ -47,28 +47,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh" className={`theme-${_theme}`}>
-      <head>
-        {/* Google tag (gtag.js) */}
-        <Script
-          async
-          src="https://www.googletagmanager.com/gtag/js?id=G-03MVHHCXJ6"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-03MVHHCXJ6');
-          `}
-        </Script>
-        {RECAPTCHA_SITE_KEY && (
-          <Script
-            src={`https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`}
-            strategy="afterInteractive"
-          />
-        )}
-      </head>
       <body className="bg-gray-100 text-gray-900 min-h-screen font-sans flex flex-col">
         <Header title={_title} />
         <main className="flex-1">{children}</main>
@@ -89,6 +67,24 @@ export default function RootLayout({
           </a>
           .
         </footer>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-03MVHHCXJ6"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-03MVHHCXJ6');
+          `}
+        </Script>
+        {RECAPTCHA_SITE_KEY && (
+          <Script
+            src={`https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`}
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
