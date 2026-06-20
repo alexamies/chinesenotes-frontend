@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copy-dictionary.mjs",
+    "predev": "node scripts/copy-dictionary.mjs && node scripts/copy-references.mjs",
     "dev": "next dev --webpack",
-    "prebuild": "node scripts/copy-dictionary.mjs",
+    "prebuild": "node scripts/copy-dictionary.mjs && node scripts/copy-references.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",

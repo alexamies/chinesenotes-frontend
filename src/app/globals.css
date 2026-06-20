@@ -19,3 +19,57 @@
 .theme-hbreader {
   --color-primary: #a0522d;
 }
+
+.references-content h2 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 1.5rem;
+}
+
+.references-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.references-content p {
+  color: #374151;
+  line-height: 1.75;
+  margin-bottom: 1rem;
+}
+
+.references-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  color: #374151;
+  line-height: 1.75;
+  space-y: 0.25rem;
+}
+
+.references-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  color: #374151;
+  line-height: 1.75;
+}
+
+.references-content li {
+  margin-bottom: 0.5rem;
+}
+
+.references-content a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.references-content a:hover {
+  opacity: 0.8;
+}
+
+.references-content i,
+.references-content em {
+  font-style: italic;
+}

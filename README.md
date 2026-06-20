@@ -216,9 +216,9 @@ gcloud run services update ${SERVICE_NAME} \
 
 Chapter pages are rendered at request time (ISR, 24-hour cache) and fetch text from `gs://chinesenotes-text` using the Cloud Run service account credentials.
 
-### Building the dictionary before deploying
+### Building static assets before deploying
 
-The full dictionary must be built locally before submitting to Cloud Build, because the source files are not available there. Set `SITE` to match the deployment target:
+Two files must be built locally before submitting to Cloud Build, because the source repos are not available there. Set `SITE` to match the deployment target:
 
 ```shell
 SITE=chinesenotes node scripts/copy-dictionary.mjs   # chinesenotes.com
@@ -228,10 +228,21 @@ SITE=hbreader     node scripts/copy-dictionary.mjs   # hbreader.org
 
 This writes `data/dictionary.json`. The `.gcloudignore` file overrides `.gitignore` to include `data/` in the Cloud Build upload so the pre-built file is available inside the Docker build.
 
+The references page HTML must also be copied locally before deploying. The `ntireader` and `hbreader` source repos are private and cannot be cloned inside the Docker build:
+
+```shell
+SITE=chinesenotes node scripts/copy-references.mjs   # chinesenotes.com
+SITE=ntireader    node scripts/copy-references.mjs   # ntireader.org
+SITE=hbreader     node scripts/copy-references.mjs   # hbreader.org
+```
+
+This writes `assets/references.html`, which is included in the Cloud Build upload and baked into the statically pre-rendered `/references` page at build time.
+
 ### Deploy
 
 ```shell
-gcloud builds submit --config cloudbuild.yaml .
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions _SITE_THEME=chinesenotes,_SERVICE_NAME=chinesenotes-frontend .
 ```
 
 This runs three Cloud Build steps:
