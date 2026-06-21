@@ -228,7 +228,7 @@ SITE=hbreader     node scripts/copy-dictionary.mjs   # hbreader.org
 
 This writes `data/dictionary.json`. The `.gcloudignore` file overrides `.gitignore` to include `data/` in the Cloud Build upload so the pre-built file is available inside the Docker build.
 
-The references page HTML must also be copied locally before deploying. The `ntireader` and `hbreader` source repos are private and cannot be cloned inside the Docker build:
+The references and abbreviations page HTML must also be copied locally before deploying. The `ntireader` and `hbreader` source repos are private and cannot be cloned inside the Docker build:
 
 ```shell
 SITE=chinesenotes node scripts/copy-references.mjs   # chinesenotes.com
@@ -236,7 +236,7 @@ SITE=ntireader    node scripts/copy-references.mjs   # ntireader.org
 SITE=hbreader     node scripts/copy-references.mjs   # hbreader.org
 ```
 
-This writes `assets/references.html`, which is included in the Cloud Build upload and baked into the statically pre-rendered `/references` page at build time.
+This writes `assets/references.html` and `assets/abbreviations.html`, which are included in the Cloud Build upload and baked into the statically pre-rendered `/references` and `/abbreviations` pages at build time.
 
 ### Deploy
 
