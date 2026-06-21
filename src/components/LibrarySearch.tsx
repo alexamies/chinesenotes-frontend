@@ -34,6 +34,19 @@ function collectionFileToBookPath(collectionFile: string): string | null {
   return bookId ? `/library/${bookId}` : null;
 }
 
+function renderSnippet(snippet: string, longestMatch: string) {
+  if (!longestMatch) return <>{snippet}</>;
+  const idx = snippet.indexOf(longestMatch);
+  if (idx === -1) return <>{snippet}</>;
+  return (
+    <>
+      {snippet.slice(0, idx)}
+      <span className="text-red-600 font-medium">{longestMatch}</span>
+      {snippet.slice(idx + longestMatch.length)}
+    </>
+  );
+}
+
 export default function LibrarySearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchDocument[] | null>(null);
@@ -122,7 +135,7 @@ export default function LibrarySearch() {
                       )}
                       {snippet && (
                         <p className="mt-2 text-sm text-gray-700 leading-relaxed line-clamp-3">
-                          {snippet}
+                          {renderSnippet(snippet, doc.MatchDetails?.LongestMatch ?? "")}
                         </p>
                       )}
                       {doc.ContainsTerms?.length > 0 && (
