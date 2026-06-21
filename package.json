@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/copy-dictionary.mjs && node scripts/copy-references.mjs",
+    "predev": "node scripts/copy-dictionary.mjs && node scripts/copy-references.mjs && node scripts/build-substring-index.mjs",
     "dev": "next dev --webpack",
-    "prebuild": "node scripts/copy-dictionary.mjs && node scripts/copy-references.mjs",
+    "prebuild": "node scripts/copy-dictionary.mjs && node scripts/copy-references.mjs && node scripts/build-substring-index.mjs",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",

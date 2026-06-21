@@ -1,5 +1,5 @@
 import type { DictionaryEntry } from "@/types/dictionary";
-import TermTexts from "@/components/TermTexts";
+import TermActions from "@/components/TermActions";
 
 interface EntryDetailProps {
   entries: DictionaryEntry[];
@@ -38,7 +38,7 @@ export default function EntryDetail({ entries }: EntryDetailProps) {
   }));
 
   const allSenses = entries;
-  const searchTerm = head.t !== head.s ? head.t : head.s;
+  const textsQuery = head.t !== head.s ? head.t : head.s;
 
   return (
     <div className="text-left">
@@ -80,7 +80,7 @@ export default function EntryDetail({ entries }: EntryDetailProps) {
           </div>
         );
       })}
-      <TermTexts term={searchTerm} />
+      <TermActions term={head.s} textsQuery={textsQuery} />
     </div>
   );
 }

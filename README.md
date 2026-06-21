@@ -10,6 +10,7 @@ Built with Next.js 16 App Router and TypeScript. The same codebase serves all th
 - **Text segmentation** — greedy longest-match segmentation of Chinese input into dictionary words
 - **Library reader** — browse classical texts chapter by chapter; click any word to see its definition inline
 - **Multi-site theming** — `demo`, `chinesenotes`, `ntireader`, `hbreader` themes via a single env var
+- **Contains search** — "Other terms containing this term" link on every entry detail page; backed by a precomputed substring index (`data/substring-index.json`) built from the dictionary at compile time
 - **Bot protection** — signed session cookies block direct API scraping; interaction counts stored in Firestore enforce Google reCAPTCHA Enterprise after 25 requests per session per day
 
 ## Development
@@ -72,6 +73,16 @@ SITE=chinesenotes node scripts/copy-dictionary.mjs
 ```
 
 If none of the configured source files are found, the script falls back to keeping an existing `data/dictionary.json` if present, or copying `assets/example_dictionary.json` otherwise.
+
+#### Substring index
+
+`scripts/build-substring-index.mjs` reads `data/dictionary.json` and writes `data/substring-index.json` — a reverse index mapping every dictionary headword to the list of longer headwords that contain it as a substring (sorted by decreasing length, capped at 50). This powers the "Other terms containing this term" feature on entry detail pages.
+
+The script runs automatically as part of the `predev` and `prebuild` hooks and skips rebuilding if the index file is already newer than the dictionary. It can also be run manually:
+
+```shell
+node scripts/build-substring-index.mjs
+```
 
 ### Corpus
 
@@ -227,6 +238,8 @@ SITE=hbreader     node scripts/copy-dictionary.mjs   # hbreader.org
 ```
 
 This writes `data/dictionary.json`. The `.gcloudignore` file overrides `.gitignore` to include `data/` in the Cloud Build upload so the pre-built file is available inside the Docker build.
+
+`data/substring-index.json` does **not** need to be built locally before submitting. The `prebuild` hook runs `build-substring-index.mjs` inside the Docker container, which builds the index from the uploaded `data/dictionary.json` automatically.
 
 The references and abbreviations page HTML must also be copied locally before deploying. The `ntireader` and `hbreader` source repos are private and cannot be cloned inside the Docker build:
 

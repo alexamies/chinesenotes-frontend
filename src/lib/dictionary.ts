@@ -3,6 +3,7 @@ import path from "path";
 import type { DictionaryEntry } from "@/types/dictionary";
 
 let index: Map<string, DictionaryEntry[]> | null = null;
+let substringIndex: Map<string, string[]> | null = null;
 
 function getIndex(): Map<string, DictionaryEntry[]> {
   if (index !== null) return index;
@@ -31,4 +32,16 @@ function getIndex(): Map<string, DictionaryEntry[]> {
 
 export function lookupTerm(term: string): DictionaryEntry[] | undefined {
   return getIndex().get(term);
+}
+
+function getSubstringIndex(): Map<string, string[]> {
+  if (substringIndex !== null) return substringIndex;
+  const filePath = path.join(process.cwd(), "data", "substring-index.json");
+  const raw = JSON.parse(fs.readFileSync(filePath, "utf-8")) as Record<string, string[]>;
+  substringIndex = new Map(Object.entries(raw));
+  return substringIndex;
+}
+
+export function findContainingTerms(term: string): string[] {
+  return getSubstringIndex().get(term) ?? [];
 }
