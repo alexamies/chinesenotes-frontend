@@ -42,4 +42,5 @@ next-env.d.ts
 chinesenotes-frontend.code-workspace
 
 # Random
+assets/
 tmp/
