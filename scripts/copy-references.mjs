@@ -143,3 +143,86 @@ if (config && existsSync(config.src)) {
   writeFileSync(resourcesOut, "");
   console.log(`No resources source found for SITE='${site ?? "demo"}'; wrote empty placeholder`);
 }
+
+// ── About page + internally-linked sub-pages ─────────────────────────────────
+
+const ABOUT_REWRITES_CHINESENOTES = [
+  [/href=["']references\.html["']/g,              'href="/references"'],
+  [/href=["']abbreviations\.html["']/g,           'href="/abbreviations"'],
+  [/href=["']\/abbreviations\.html["']/g,         'href="/abbreviations"'],
+  [/href=["']resources\.html["']/g,               'href="/resources"'],
+  [/href=["']help\.html["']/g,                    'href="/resource-pages/help"'],
+  [/href=["']help2\.html#word_detail["']/g,       'href="/resource-pages/help2#word_detail"'],
+  [/href=["']help2\.html#english["']/g,           'href="/resource-pages/help2#english"'],
+  [/href=["']help2\.html["']/g,                   'href="/resource-pages/help2"'],
+  [/href=["']help3\.html#results["']/g,           'href="/resource-pages/help3#results"'],
+  [/href=["']help3\.html["']/g,                   'href="/resource-pages/help3"'],
+  [/href=["']help4\.html["']/g,                   'href="/resource-pages/help4"'],
+  [/href=["']help5\.html["']/g,                   'href="/resource-pages/help5"'],
+  [/href=["']help6\.html#quotations["']/g,        'href="/resource-pages/help6#quotations"'],
+  [/href=["']help6\.html["']/g,                   'href="/resource-pages/help6"'],
+  [/href=["']dictionary_design\.html["']/g,       'href="/resource-pages/dictionary_design"'],
+  [/href=["']corpus\.html["']/g,                  'href="/resource-pages/corpus"'],
+  [/href=["']style_guide\.html["']/g,             'href="/resource-pages/style_guide"'],
+  [/href=["']chrome-extension\.html["']/g,        'href="/resource-pages/chrome-extension"'],
+  [/href=["']dictionary_templates\.html["']/g,    'href="/resource-pages/dictionary_templates"'],
+];
+
+const ABOUT = {
+  chinesenotes: {
+    src: join(root, "..", "chinesenotes.com", "html", "about-raw.html"),
+    linkedDir: join(root, "..", "chinesenotes.com", "html"),
+    // { slug: URL slug, file: source filename in linkedDir }
+    linkedPages: [
+      { slug: "help",                 file: "help-raw.html" },
+      { slug: "help2",                file: "help2-raw.html" },
+      { slug: "help3",                file: "help3-raw.html" },
+      { slug: "help4",                file: "help4-raw.html" },
+      { slug: "help5",                file: "help5-raw.html" },
+      { slug: "help6",                file: "help6-raw.html" },
+      { slug: "dictionary_design",    file: "dictionary_design-raw.html" },
+      { slug: "corpus",               file: "corpus.html" },
+      { slug: "style_guide",          file: "style_guide-raw.html" },
+      { slug: "dictionary_templates", file: "dictionary_templates.html" },
+    ],
+    rewrites: ABOUT_REWRITES_CHINESENOTES,
+  },
+  ntireader: {
+    src: join(root, "..", "buddhist-dictionary", "html", "about.html"),
+    linkedDir: null,
+    linkedPages: [],
+    rewrites: [],
+  },
+  hbreader: {
+    src: join(root, "..", "hbreader", "html", "about.html"),
+    linkedDir: null,
+    linkedPages: [],
+    rewrites: [],
+  },
+};
+
+const aboutOut = join(root, "assets", "about.html");
+const aboutConfig = site ? ABOUT[site] : null;
+
+if (aboutConfig && existsSync(aboutConfig.src)) {
+  const html = readFileSync(aboutConfig.src, "utf-8");
+  writeFileSync(aboutOut, applyRewrites(html, aboutConfig.rewrites));
+  console.log(`Copied about HTML for SITE='${site}': ${aboutConfig.src}`);
+
+  for (const { slug, file } of aboutConfig.linkedPages) {
+    const srcFile = join(aboutConfig.linkedDir, file);
+    const outFile = join(resourcesPagesDir, `${slug}.html`);
+    if (existsSync(srcFile)) {
+      const pageHtml = readFileSync(srcFile, "utf-8");
+      writeFileSync(outFile, applyRewrites(pageHtml, aboutConfig.rewrites));
+      console.log(`  Copied about-linked page ${slug}.html`);
+    } else {
+      console.log(`  Skipping ${slug}.html (not found at ${srcFile})`);
+    }
+  }
+} else if (existsSync(aboutOut)) {
+  console.log(`Source for SITE='${site ?? "demo"}' not found; keeping existing assets/about.html`);
+} else {
+  writeFileSync(aboutOut, "");
+  console.log(`No about source found for SITE='${site ?? "demo"}'; wrote empty placeholder`);
+}
