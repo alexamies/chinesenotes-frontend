@@ -16,5 +16,6 @@ export interface Segment {
 }
 
 export type LookupResult =
-  | { found: true; segments: Segment[]; interactionCount: number }
+  | { found: true; type: 'chinese'; segments: Segment[]; interactionCount: number }
+  | { found: true; type: 'reverse'; entries: DictionaryEntry[]; interactionCount: number }
   | { found: false; interactionCount?: number };

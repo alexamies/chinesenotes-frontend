@@ -20,8 +20,8 @@ export default function DictionaryLookup({ onSearchTextChange, initialValue = ""
       <input
         type="text"
         className="flex-1 text-xl px-3 py-2 border border-gray-300 rounded outline-none focus:border-primary transition-colors"
-        placeholder="中文"
-        aria-label="Chinese term"
+        placeholder="中文 / English / pinyin"
+        aria-label="Chinese characters, English, or pinyin"
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
       />

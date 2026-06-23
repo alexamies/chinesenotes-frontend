@@ -82,7 +82,7 @@ export default function DictionaryApp({ initialQuery }: DictionaryAppProps) {
 
   return (
     <div className="bg-white rounded-lg shadow p-8">
-      <h2 className="text-base font-medium text-gray-500 mb-4">Enter a Chinese word or phrase to look up its English meaning.</h2>
+      <h2 className="text-base font-medium text-gray-500 mb-4">Enter Chinese characters, English, or pinyin (without tones) to look up dictionary entries.</h2>
 
       <DictionaryLookup initialValue={initialQuery ?? ""} onSearchTextChange={handleSearch} />
 

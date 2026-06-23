@@ -3,9 +3,10 @@ import type { Segment } from "@/types/dictionary";
 
 interface EntryListProps {
   segments: Segment[];
+  searchText: string;
 }
 
-export default function EntryList({ segments }: EntryListProps) {
+export default function EntryList({ segments, searchText }: EntryListProps) {
   return (
     <div className="mt-6">
       <table className="w-full text-left border-collapse">
@@ -40,7 +41,7 @@ export default function EntryList({ segments }: EntryListProps) {
                 </td>
                 <td className="py-3 text-right whitespace-nowrap">
                   <TrackedLink
-                    href={`/entry/${encodeURIComponent(segment.text)}`}
+                    href={`/entry/${encodeURIComponent(segment.text)}?from=${encodeURIComponent(searchText)}`}
                     className="text-sm font-medium text-primary hover:underline"
                   >
                     Details →

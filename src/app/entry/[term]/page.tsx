@@ -6,16 +6,21 @@ import DictionaryLookupNav from "@/components/DictionaryLookupNav";
 
 export default async function EntryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ term: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { term } = await params;
+  const { from } = await searchParams;
   const decoded = decodeURIComponent(term);
   const entries = lookupTerm(decoded);
 
   if (!entries) {
     notFound();
   }
+
+  const backHref = from ? `/?q=${encodeURIComponent(from)}` : '/';
 
   return (
     <main className="max-w-2xl mx-auto mt-12 px-6">
@@ -24,7 +29,7 @@ export default async function EntryPage({
       </div>
       <div className="bg-white rounded-lg shadow p-8">
         <div className="mb-4">
-          <Link href="/" className="text-sm font-medium text-primary hover:underline">
+          <Link href={backHref} className="text-sm font-medium text-primary hover:underline">
             ← Back to search
           </Link>
         </div>

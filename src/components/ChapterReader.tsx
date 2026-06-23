@@ -52,7 +52,7 @@ export default function ChapterReader({ title, paragraphs }: ChapterReaderProps)
         if (data.interactionCount !== undefined) {
           updateInteractionCount(data.interactionCount);
         }
-        if (data.found) {
+        if (data.found && data.type === 'chinese') {
           setEntries(data.segments.flatMap((s) => s.entries ?? []));
         }
       }
