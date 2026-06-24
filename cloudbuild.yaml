@@ -8,7 +8,11 @@
 # _SERVICE_NAME to deploy the ntireader or hbreader variants:
 #
 #   gcloud builds submit --config cloudbuild.yaml \
-#     --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=ntireader-frontend .
+#     --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=ntireader-frontend,_TEXT_BUCKET=my-bucket .
+#
+# _TEXT_BUCKET is optional on re-deploys: if omitted, the existing Cloud Run
+# value is preserved.  Set it once (manually or via substitution) and it
+# persists across future deploys that omit it.
 #
 # Prerequisites before running gcloud builds submit:
 #   1. data/dictionary.json must exist locally (run `node scripts/copy-dictionary.mjs`
@@ -49,22 +53,28 @@ steps:
       - --all-tags
       - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}
 
-  # Deploy the new image to Cloud Run.  --update-env-vars only touches
-  # SITE_THEME; all other Cloud Run settings (memory, concurrency, etc.)
+  # Deploy the new image to Cloud Run.  --update-env-vars only touches the
+  # vars listed; all other Cloud Run settings (memory, concurrency, etc.)
   # are left as previously configured.
+  # TEXT_BUCKET is only added to --update-env-vars when _TEXT_BUCKET is
+  # non-empty so that a blank substitution never overwrites an existing value.
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     id: deploy
     waitFor: [push]
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - ${_SERVICE_NAME}
-      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${BUILD_ID}
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --update-env-vars=SITE_THEME=${_SITE_THEME},TEXT_BUCKET=${_TEXT_BUCKET}
+      - -c
+      - |
+        ENV_VARS="SITE_THEME=${_SITE_THEME}"
+        if [ -n "${_TEXT_BUCKET}" ]; then
+          ENV_VARS="$$ENV_VARS,TEXT_BUCKET=${_TEXT_BUCKET}"
+        fi
+        gcloud run deploy ${_SERVICE_NAME} \
+          --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${BUILD_ID} \
+          --region=${_REGION} \
+          --platform=managed \
+          --allow-unauthenticated \
+          --update-env-vars="$$ENV_VARS"
 
 images:
   - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${BUILD_ID}

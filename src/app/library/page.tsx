@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { getWorksForLibrary } from "@/lib/corpus";
 import LibrarySearch from "@/components/LibrarySearch";
+import TaishoLibrary from "@/components/TaishoLibrary";
 
 export default async function LibraryPage() {
   const library = process.env.SITE_THEME ?? "demo";
-  const works = await getWorksForLibrary(library);
+  const isTaisho = library === "ntireader";
+  const works = isTaisho ? [] : await getWorksForLibrary(library);
 
   return (
     <main className="max-w-2xl mx-auto mt-12 px-6 pb-16">
@@ -15,7 +17,9 @@ export default async function LibraryPage() {
 
       <h3 className="text-lg font-semibold text-gray-800 mb-3">Browse</h3>
 
-      {works.length === 0 ? (
+      {isTaisho ? (
+        <TaishoLibrary />
+      ) : works.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 bg-white px-8 py-12 text-center text-gray-400">
           <p className="text-lg font-medium">No texts yet</p>
           <p className="mt-1 text-sm">The library will display a list of classical and modern Chinese texts here.</p>

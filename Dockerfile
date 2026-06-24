@@ -21,7 +21,12 @@ RUN apk add --no-cache git && \
     esac && \
     git clone --depth=1 --filter=blob:none --sparse \
       "https://github.com/alexamies/${REPO}.git" "/${REPO}" && \
-    git -C "/${REPO}" sparse-checkout set data/corpus && \
+    case "$SITE_THEME" in \
+      ntireader) \
+        git -C "/${REPO}" sparse-checkout set data/corpus html/taisho && \
+        git -C "/${REPO}" checkout HEAD -- html/taisho.html ;; \
+      *) git -C "/${REPO}" sparse-checkout set data/corpus ;; \
+    esac && \
     cp -rp "/${REPO}/data/corpus" /active-corpus
 ARG NEXT_PUBLIC_RECAPTCHA_SITE_KEY
 ENV NEXT_PUBLIC_RECAPTCHA_SITE_KEY=$NEXT_PUBLIC_RECAPTCHA_SITE_KEY

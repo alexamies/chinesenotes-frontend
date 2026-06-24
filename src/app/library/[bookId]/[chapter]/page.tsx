@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getWork, getChapterTitle, getChapterText } from "@/lib/corpus";
+import { getWork, getChapters, getChapterText } from "@/lib/corpus";
 import { segmentText } from "@/lib/segmentation";
 
 import { lookupTerm } from "@/lib/dictionary";
@@ -25,14 +25,18 @@ export default async function ChapterPage({ params }: PageProps) {
   const work = await getWork(bookId);
   if (!work) notFound();
 
+  const chapters = await getChapters(work);
+  const chapterMeta = chapters.find((c) => c.chapterId === chapter);
+  if (!chapterMeta) notFound();
+
   let rawText: string;
   try {
-    rawText = await getChapterText(bookId, chapter);
+    rawText = await getChapterText(chapterMeta.sourcePath);
   } catch {
     notFound();
   }
 
-  const title = (await getChapterTitle(work, chapter)) ?? chapter;
+  const title = chapterMeta.title;
 
   const paragraphs: TextSegment[][] = rawText
     .split("\n")

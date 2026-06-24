@@ -189,9 +189,24 @@ const ABOUT = {
   },
   ntireader: {
     src: join(root, "..", "buddhist-dictionary", "html", "about.html"),
-    linkedDir: null,
-    linkedPages: [],
-    rewrites: [],
+    linkedDir: join(root, "..", "buddhist-dictionary", "html"),
+    linkedPages: [
+      { slug: "annotation",           file: "annotation.html" },
+      { slug: "corpus",               file: "corpus.html" },
+      { slug: "whatsnew",             file: "whatsnew.html" },
+      { slug: "publications",         file: "publications.html" },
+    ],
+    rewrites: [
+      [/href=["']annotation\.html["']/g,                   'href="/resource-pages/annotation"'],
+      [/href=["']corpus\.html["']/g,                       'href="/resource-pages/corpus"'],
+      [/href=["']faq\.html["']/g,                          'href="/resource-pages/faq"'],
+      [/href=["']translation_workflow\.html#casual["']/g,  'href="/resource-pages/translation_workflow#casual"'],
+      [/href=["']translation_workflow\.html#contributor["']/g, 'href="/resource-pages/translation_workflow#contributor"'],
+      [/href=["']translation_workflow\.html["']/g,         'href="/resource-pages/translation_workflow"'],
+      [/href=["']whatsnew\.html["']/g,                     'href="/resource-pages/whatsnew"'],
+      [/href=["']references\.html["']/g,                   'href="/references"'],
+      [/href=["']\/publications\.html["']/g,               'href="/resource-pages/publications"'],
+    ],
   },
   hbreader: {
     src: join(root, "..", "hbreader", "html", "about.html"),

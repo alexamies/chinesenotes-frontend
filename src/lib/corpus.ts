@@ -17,7 +17,10 @@ function getCorpusRoot(): string {
 
 function getGcsBucket(): string {
   const bucket = process.env.TEXT_BUCKET;
-  if (!bucket) throw new Error("TEXT_BUCKET environment variable is not set");
+  if (!bucket) {
+    console.error("TEXT_BUCKET environment variable is not set");
+    throw new Error("TEXT_BUCKET environment variable is not set");
+  }
   return bucket;
 }
 
@@ -29,11 +32,13 @@ export interface Work {
   titleEnglish: string;
   author: string;      // period/date, e.g. "Pre-Han", "c. 479–221 BCE"
   description: string;
+  csvPath: string;     // relative path from corpus root, e.g. "taisho/t0099.csv"
 }
 
 export interface Chapter {
   chapterId: string;
   title: string;
+  sourcePath: string; // relative path used as GCS key, e.g. "taisho/t0099_01.txt"
 }
 
 function splitTitle(combined: string): { english: string; chinese: string } {
@@ -60,7 +65,7 @@ export async function getCatalog(): Promise<Work[]> {
     const { english, chinese } = splitTitle(parts[2] ?? "");
     const description = (parts[3] ?? "").trim();
     const author = (parts[7] ?? "").trim();
-    works.push({ id, titleEnglish: english, titleChinese: chinese, author, description });
+    works.push({ id, titleEnglish: english, titleChinese: chinese, author, description, csvPath: csvFile });
   }
   return works;
 }
@@ -75,8 +80,7 @@ export async function getWork(bookId: string): Promise<Work | null> {
 }
 
 export async function getChapters(work: Work): Promise<Chapter[]> {
-  // Each book has a corresponding {bookId}.csv listing its chapters
-  const csvPath = path.join(getCorpusRoot(), `${work.id}.csv`);
+  const csvPath = path.join(getCorpusRoot(), work.csvPath);
   let text: string;
   try {
     text = await fs.readFile(csvPath, "utf-8");
@@ -91,9 +95,10 @@ export async function getChapters(work: Work): Promise<Chapter[]> {
     if (!trimmed || trimmed.startsWith("#")) continue;
     const parts = trimmed.split("\t");
     if (parts.length < 3) continue;
-    const chapterId = path.basename(parts[0].trim(), ".txt");
+    const sourcePath = parts[0].trim();
+    const chapterId = path.basename(sourcePath, ".txt");
     const title = parts[2].trim();
-    if (chapterId && title) chapters.push({ chapterId, title });
+    if (chapterId && title) chapters.push({ chapterId, title, sourcePath });
   }
   return chapters;
 }
@@ -103,9 +108,7 @@ export async function getChapterTitle(work: Work, chapterId: string): Promise<st
   return chapters.find((c) => c.chapterId === chapterId)?.title ?? null;
 }
 
-export async function getChapterText(bookId: string, chapterId: string): Promise<string> {
-  // Chapter text files live in GCS under {bookId}/{chapterId}.txt
-  const gcsPath = `${bookId}/${chapterId}.txt`;
-  const [contents] = await storage.bucket(getGcsBucket()).file(gcsPath).download();
+export async function getChapterText(sourcePath: string): Promise<string> {
+  const [contents] = await storage.bucket(getGcsBucket()).file(sourcePath).download();
   return contents.toString("utf-8");
 }
