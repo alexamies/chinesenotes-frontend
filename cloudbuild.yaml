@@ -25,6 +25,7 @@ substitutions:
   _REGION: us-central1
   _AR_REPO: cloud-run-source-deploy
   _RECAPTCHA_SITE_KEY: ""
+  _TEXT_BUCKET: ""
 
 steps:
   # Build the Docker image.  SITE_THEME is passed as a build arg so that
@@ -63,7 +64,7 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
-      - --update-env-vars=SITE_THEME=${_SITE_THEME}
+      - --update-env-vars=SITE_THEME=${_SITE_THEME},TEXT_BUCKET=${_TEXT_BUCKET}
 
 images:
   - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${BUILD_ID}

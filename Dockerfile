@@ -6,19 +6,23 @@ RUN npm ci
 
 COPY . .
 
-# Sparse-clone the corpus CSV index files from chinesenotes.com.
+# Sparse-clone the corpus CSV index files for the selected SITE_THEME.
 # Only data/corpus is fetched; the large text files live in GCS, not git.
-# Cloning to /chinesenotes.com mirrors the local sibling-directory layout
-# that corpus.ts expects (process.cwd()/../chinesenotes.com/data/corpus).
-RUN apk add --no-cache git && \
-    git clone --depth=1 --filter=blob:none --sparse \
-      https://github.com/alexamies/chinesenotes.com.git /chinesenotes.com && \
-    git -C /chinesenotes.com sparse-checkout set data/corpus
-
 # SITE_THEME and NEXT_PUBLIC_RECAPTCHA_SITE_KEY are baked into statically
 # pre-rendered pages at build time. Pass via --build-arg.
 ARG SITE_THEME=chinesenotes
 ENV SITE_THEME=$SITE_THEME
+
+RUN apk add --no-cache git && \
+    case "$SITE_THEME" in \
+      ntireader) REPO=buddhist-dictionary ;; \
+      hbreader) REPO=hbreader ;; \
+      *) REPO=chinesenotes.com ;; \
+    esac && \
+    git clone --depth=1 --filter=blob:none --sparse \
+      "https://github.com/alexamies/${REPO}.git" "/${REPO}" && \
+    git -C "/${REPO}" sparse-checkout set data/corpus && \
+    cp -rp "/${REPO}/data/corpus" /active-corpus
 ARG NEXT_PUBLIC_RECAPTCHA_SITE_KEY
 ENV NEXT_PUBLIC_RECAPTCHA_SITE_KEY=$NEXT_PUBLIC_RECAPTCHA_SITE_KEY
 
@@ -38,8 +42,16 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
 # Corpus CSV index files are read at request time for library and book pages.
-# Placed at /chinesenotes.com/data/corpus to match the path corpus.ts resolves.
-COPY --from=builder /chinesenotes.com/data/corpus /chinesenotes.com/data/corpus
+# Place them at the path corpus.ts resolves for the active SITE_THEME.
+ARG SITE_THEME=chinesenotes
+COPY --from=builder /active-corpus /active-corpus
+RUN case "$SITE_THEME" in \
+      ntireader) REPO=buddhist-dictionary ;; \
+      hbreader) REPO=hbreader ;; \
+      *) REPO=chinesenotes.com ;; \
+    esac && \
+    mkdir -p "/${REPO}/data" && \
+    mv /active-corpus "/${REPO}/data/corpus"
 
 # Dictionary data for the API lookup endpoint.
 COPY --from=builder /app/data ./data

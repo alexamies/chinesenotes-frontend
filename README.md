@@ -34,6 +34,7 @@ Key variables (see `.env.local.example` for the full list and comments):
 | Variable | Required locally | Description |
 |---|---|---|
 | `SITE_THEME` | No (defaults to `demo`) | `demo` \| `chinesenotes` \| `ntireader` \| `hbreader` |
+| `TEXT_BUCKET` | Yes (for Library reader) | GCS bucket holding chapter text files, e.g. `my-chinesenotes-text` |
 | `SESSION_SECRET` | Yes (for bot protection) | 32-byte hex secret — generate with `openssl rand -hex 32` |
 | `GOOGLE_CLOUD_PROJECT` | Yes (for Firestore + reCAPTCHA) | GCP project ID — set automatically by Cloud Run in production |
 | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` | No (disables reCAPTCHA if unset) | Score-based reCAPTCHA Enterprise site key |
@@ -86,15 +87,21 @@ node scripts/build-substring-index.mjs
 
 ### Corpus
 
-The library feature is driven by the [chinesenotes.com](https://github.com/alexamies/chinesenotes.com) corpus. For local development, check out that repo as a sibling directory:
+The library feature is driven by a corpus repo that depends on `SITE_THEME`. For local development, check out the appropriate repo as a sibling directory:
+
+| `SITE_THEME` | Repo | Local path |
+|---|---|---|
+| `chinesenotes` / `demo` | [chinesenotes.com](https://github.com/alexamies/chinesenotes.com) | `../chinesenotes.com/` |
+| `ntireader` | [buddhist-dictionary](https://github.com/alexamies/buddhist-dictionary) | `../buddhist-dictionary/` |
+| `hbreader` | [hbreader](https://github.com/alexamies/hbreader) | `../hbreader/` |
+
+Each repo must contain:
 
 ```
-../chinesenotes.com/
-  data/corpus/
-    collections.csv     # master list of all works (one per line, tab-separated)
-    daodejing.csv       # per-book chapter index (one per work)
-    lunyu.csv
-    ...
+data/corpus/
+  collections.csv     # master list of all works (one per line, tab-separated)
+  daodejing.csv       # per-book chapter index (one per work)
+  ...
 ```
 
 `collections.csv` columns (tab-separated):
@@ -109,9 +116,9 @@ Each per-book CSV lists chapters:
 sourcePath  htmlPath  chapterTitle
 ```
 
-where `sourcePath` is of the form `bookId/chapterId.txt` — the same path used to fetch the file from the GCS bucket `chinesenotes-text`.
+where `sourcePath` is of the form `bookId/chapterId.txt` — the same path used to fetch the file from the GCS bucket named by `TEXT_BUCKET`.
 
-Chapter text files are **not** stored in git. They live in the GCS bucket `gs://chinesenotes-text` and are fetched at request time using Application Default Credentials (your local `gcloud auth application-default login` in dev; the Cloud Run service account in production).
+Chapter text files are **not** stored in git. They live in a GCS bucket and are fetched at request time using Application Default Credentials (your local `gcloud auth application-default login` in dev; the Cloud Run service account in production). Set `TEXT_BUCKET` to the name of that bucket.
 
 ## Bot protection
 
@@ -184,10 +191,10 @@ gcloud artifacts repositories create cloud-run-source-deploy \
   --repository-format docker --location us-central1
 ```
 
-Grant the Cloud Run service account read access to the GCS text bucket:
+Grant the Cloud Run service account read access to the GCS text bucket (substitute your `TEXT_BUCKET` value):
 
 ```shell
-gcloud storage buckets add-iam-policy-binding gs://chinesenotes-text \
+gcloud storage buckets add-iam-policy-binding gs://${TEXT_BUCKET} \
   --member=serviceAccount:${SERVICE_ACCOUNT_EMAIL} \
   --role=roles/storage.objectViewer
 ```
@@ -217,15 +224,16 @@ gcloud secrets add-iam-policy-binding session-secret \
   --role=roles/secretmanager.secretAccessor
 ```
 
-Mount the secret and set `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` on the Cloud Run service. `GOOGLE_CLOUD_PROJECT` is injected automatically by Cloud Run and does not need to be set manually.
+Mount the secret and set runtime env vars on the Cloud Run service. `GOOGLE_CLOUD_PROJECT` is injected automatically by Cloud Run and does not need to be set manually.
 
 ```shell
 gcloud run services update ${SERVICE_NAME} \
+  --region ${REGION} \
   --update-secrets SESSION_SECRET=session-secret:latest \
-  --update-env-vars NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${SITE_KEY}
+  --update-env-vars NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${SITE_KEY},TEXT_BUCKET=${TEXT_BUCKET}
 ```
 
-Chapter pages are rendered at request time (ISR, 24-hour cache) and fetch text from `gs://chinesenotes-text` using the Cloud Run service account credentials.
+Chapter pages are rendered at request time (ISR, 24-hour cache) and fetch text from `gs://${TEXT_BUCKET}` using the Cloud Run service account credentials.
 
 ### Building static assets before deploying
 
@@ -255,25 +263,25 @@ This writes `assets/references.html` and `assets/abbreviations.html`, which are 
 
 ```shell
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions _SITE_THEME=chinesenotes,_SERVICE_NAME=chinesenotes-frontend .
+  --substitutions _SITE_THEME=chinesenotes,_SERVICE_NAME=${SERVICE_NAME},_TEXT_BUCKET=${TEXT_BUCKET} .
 ```
 
 This runs three Cloud Build steps:
 
-1. `docker build` — clones the corpus CSV index files from `github.com/alexamies/chinesenotes.com` (sparse checkout of `data/corpus` only), then builds the Next.js app with `--build-arg SITE_THEME=chinesenotes`
+1. `docker build` — sparse-clones the corpus CSV index files from the repo matching `SITE_THEME` (e.g. `github.com/alexamies/buddhist-dictionary` for ntireader), then builds the Next.js app with `SITE_THEME` baked in
 2. `docker push` — pushes to Artifact Registry
-3. `gcloud run deploy` — deploys to Cloud Run and sets `SITE_THEME` as a runtime env var
+3. `gcloud run deploy` — deploys to Cloud Run and sets `SITE_THEME` and `TEXT_BUCKET` as runtime env vars
 
-Default substitutions in `cloudbuild.yaml` target chinesenotes.com. Override them for the other sites:
+Override substitutions for the other sites:
 
 ```shell
 # ntireader.org
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=ntireader-frontend .
+  --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=${SERVICE_NAME},_TEXT_BUCKET=${TEXT_BUCKET} .
 
 # hbreader.org
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions _SITE_THEME=hbreader,_SERVICE_NAME=hbreader-frontend .
+  --substitutions _SITE_THEME=hbreader,_SERVICE_NAME=${SERVICE_NAME},_TEXT_BUCKET=${TEXT_BUCKET} .
 ```
 
 ### Rendering strategy
@@ -282,7 +290,7 @@ gcloud builds submit --config cloudbuild.yaml \
 |---|---|---|
 | `/library` | Static (build time) | `collections.csv` cloned in Dockerfile |
 | `/library/[bookId]` | Static (build time) | per-book `.csv` cloned in Dockerfile |
-| `/library/[bookId]/[chapter]` | ISR (24 h cache) | GCS bucket `chinesenotes-text` at request time |
+| `/library/[bookId]/[chapter]` | ISR (24 h cache) | GCS bucket (`TEXT_BUCKET`) at request time |
 | `/entry/[term]` | Static (build time) | `data/dictionary.json` |
 
 ### Why SITE_THEME is a build-time argument

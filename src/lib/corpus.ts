@@ -2,8 +2,24 @@ import fs from "fs/promises";
 import path from "path";
 import { Storage } from "@google-cloud/storage";
 
-const CORPUS_ROOT = path.join(process.cwd(), "..", "chinesenotes.com", "data", "corpus");
-const GCS_BUCKET = "chinesenotes-text";
+const CORPUS_DIR_BY_THEME: Record<string, string> = {
+  chinesenotes: "chinesenotes.com",
+  ntireader: "buddhist-dictionary",
+  hbreader: "hbreader",
+  demo: "chinesenotes.com",
+};
+
+function getCorpusRoot(): string {
+  const theme = process.env.SITE_THEME ?? "demo";
+  const dir = CORPUS_DIR_BY_THEME[theme] ?? CORPUS_DIR_BY_THEME["demo"];
+  return path.join(process.cwd(), "..", dir, "data", "corpus");
+}
+
+function getGcsBucket(): string {
+  const bucket = process.env.TEXT_BUCKET;
+  if (!bucket) throw new Error("TEXT_BUCKET environment variable is not set");
+  return bucket;
+}
 
 const storage = new Storage();
 
@@ -31,7 +47,7 @@ export async function getCatalog(): Promise<Work[]> {
   // collections.csv columns (tab-separated):
   // 0: csvFile  1: htmlFile  2: title  3: description  4: introFile
   // 5: corpus   6: language  7: period  8: genre
-  const text = await fs.readFile(path.join(CORPUS_ROOT, "collections.csv"), "utf-8");
+  const text = await fs.readFile(path.join(getCorpusRoot(), "collections.csv"), "utf-8");
   const works: Work[] = [];
   for (const line of text.split("\n")) {
     const trimmed = line.trim();
@@ -60,7 +76,7 @@ export async function getWork(bookId: string): Promise<Work | null> {
 
 export async function getChapters(work: Work): Promise<Chapter[]> {
   // Each book has a corresponding {bookId}.csv listing its chapters
-  const csvPath = path.join(CORPUS_ROOT, `${work.id}.csv`);
+  const csvPath = path.join(getCorpusRoot(), `${work.id}.csv`);
   let text: string;
   try {
     text = await fs.readFile(csvPath, "utf-8");
@@ -90,6 +106,6 @@ export async function getChapterTitle(work: Work, chapterId: string): Promise<st
 export async function getChapterText(bookId: string, chapterId: string): Promise<string> {
   // Chapter text files live in GCS under {bookId}/{chapterId}.txt
   const gcsPath = `${bookId}/${chapterId}.txt`;
-  const [contents] = await storage.bucket(GCS_BUCKET).file(gcsPath).download();
+  const [contents] = await storage.bucket(getGcsBucket()).file(gcsPath).download();
   return contents.toString("utf-8");
 }
