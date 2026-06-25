@@ -24,11 +24,11 @@ function addToMap(
   map: Map<string, DictionaryEntry[]>,
   key: string,
   entry: DictionaryEntry,
-  dedupByH = false,
+  dedupField: keyof DictionaryEntry | null = null,
 ): void {
   const existing = map.get(key);
   if (existing) {
-    if (!dedupByH || !existing.some((e) => e.h === entry.h)) {
+    if (!dedupField || !existing.some((e) => e[dedupField] === entry[dedupField])) {
       existing.push(entry);
     }
   } else {
@@ -62,14 +62,14 @@ function buildAllIndexes(): void {
         .filter((w) => w.length > 0 && !ENGLISH_STOP_WORDS.has(w))
         .join(' ');
       if (key) {
-        addToMap(englishIndex, key, entry, true);
+        addToMap(englishIndex, key, entry, 'h');
       }
     }
 
     // Pinyin: exact match on accent-stripped, space-stripped syllable(s)
     const pKey = normalizePinyin(entry.p);
     if (pKey) {
-      addToMap(pinyinIndex, pKey, entry, true);
+      addToMap(pinyinIndex, pKey, entry, 's');
     }
   }
 }

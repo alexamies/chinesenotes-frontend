@@ -17,6 +17,14 @@ export function segmentText(
   let j = 0;
 
   while (j < text.length) {
+    // Non-CJK characters (punctuation, ASCII, etc.) can never match a dictionary
+    // entry, so skip the greedy substring search and emit them immediately.
+    if (!/[一-鿿㐀-䶿豈-﫿]/.test(text[j])) {
+      segments.push({ text: text[j], entries: null });
+      j++;
+      continue;
+    }
+
     let k = text.length - j;
 
     while (k > 0) {
