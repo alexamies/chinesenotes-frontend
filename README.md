@@ -305,3 +305,41 @@ Next.js pre-renders static and SSG pages at `npm run build` time. If `SITE_THEME
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm test` | Run unit tests (Vitest) |
+
+## Architecture
+
+The system is composed of six main components. The source diagram is in [`drawings/architecture.dot`](drawings/architecture.dot); see [`drawings/README.md`](drawings/README.md) for how to regenerate the PNG.
+
+![Architecture diagram](drawings/architecture.png)
+
+### React / Next.js Frontend (browser)
+
+The UI is a React single-page app built with Next.js App Router. Users type Chinese characters, English, or pinyin into the search box. The component sends `fetch` requests to the Next.js API routes and renders the results — segmented Chinese terms with dictionary entries, or a reverse-lookup table for English/pinyin queries. The library reader, chapter viewer, and entry detail pages are also part of this layer.
+
+### Node.js Backend — Next.js API Routes (Cloud Run)
+
+The server-side layer runs on Node.js inside a Cloud Run container. It exposes three REST endpoints:
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/lookup` | Dictionary lookup — Chinese segmentation or reverse English/pinyin lookup |
+| `POST /api/interact` | Records a link-click interaction for rate-limiting purposes |
+| `GET /api/fulltext` | Proxies full-text search queries to the external microservice |
+
+Every response to a first-time browser also sets a signed `HttpOnly` session cookie via the Next.js middleware layer (`src/proxy.ts`). The cookie ties the browser to a Firestore session record used for rate-limiting.
+
+### Firestore — Session Data
+
+Google Cloud Firestore stores one document per browser session (`sessions/{sessionId}`). Each document holds a daily interaction counter (`count`) and the date it was last incremented. The counter is atomically incremented on every `/api/lookup` and `/api/interact` call. Once the count exceeds 25 the backend begins requiring reCAPTCHA tokens. Firestore is also used to track whether a session has been verified as human and to count failed reCAPTCHA assessments.
+
+### reCAPTCHA Enterprise — Bot Protection
+
+After a session accumulates more than 25 interactions, the client fetches a score-based reCAPTCHA Enterprise token and sends it with each request. The Node.js backend verifies the token by calling the reCAPTCHA Enterprise REST API using Application Default Credentials (the Cloud Run service account in production). Requests that fail the score threshold are rejected with 403. This layer protects the dictionary API from automated scrapers without inconveniencing normal users.
+
+### GCS Bucket — Library Text Data
+
+Chapter text files for the library reader are stored in a Google Cloud Storage bucket (configured via the `TEXT_BUCKET` environment variable). They are not kept in git. The Node.js backend fetches them at request time using `@google-cloud/storage` with the Cloud Run service-account credentials. Next.js ISR caches each chapter page for 24 hours, so GCS is only hit on the first request after a cache expiry.
+
+### Full Text Search Microservice
+
+Full-text search across the classical text corpus is handled by a separate microservice (the `findadvanced` endpoint at `chinesenotes.com`, `ntireader.org`, or `hbreader.org`). The Node.js backend proxies search queries to this service via `GET /api/fulltext`, which forwards the request to the URL configured in `FULLTEXT_API_URL` (or a per-theme default). Results are returned as JSON and passed through to the frontend.

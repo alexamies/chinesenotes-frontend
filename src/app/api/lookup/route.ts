@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleAuth } from "google-auth-library";
-import { lookupTerm, detectInputType, reverseLookup } from "@/lib/dictionary";
+import { lookupTerm, detectInputType, extractChinese, reverseLookup } from "@/lib/dictionary";
 import { segmentText } from "@/lib/segmentation";
 import { verifySession } from "@/lib/session";
 import { incrementInteraction, getRecaptchaStatus, recordRecaptchaResult } from "@/lib/firestore";
@@ -127,7 +127,8 @@ export async function GET(request: NextRequest) {
 
   // --- Lookup ---
   if (detectInputType(term) === 'chinese') {
-    const segments = segmentText(term, lookupTerm);
+    const chineseTerm = extractChinese(term);
+    const segments = segmentText(chineseTerm, lookupTerm);
     return NextResponse.json({ found: true, type: 'chinese', segments, interactionCount });
   }
 

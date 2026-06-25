@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const FULLTEXT_API = "http://chinesenotes.com/findadvanced/";
+const SITE_THEME_DEFAULTS: Record<string, string> = {
+  chinesenotes: "http://chinesenotes.com/findadvanced/",
+  ntireader:    "http://ntireader.org/findadvanced/",
+  hbreader:     "http://hbreader.org/findadvanced/",
+};
+
+function getFulltextApiUrl(): string {
+  if (process.env.FULLTEXT_API_URL) return process.env.FULLTEXT_API_URL;
+  const theme = process.env.SITE_THEME ?? "chinesenotes";
+  const url = SITE_THEME_DEFAULTS[theme] ?? SITE_THEME_DEFAULTS["chinesenotes"];
+  console.warn(`FULLTEXT_API_URL not set; using default for theme '${theme}': ${url}`);
+  return url;
+}
 
 export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get("query");
@@ -8,7 +20,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "query parameter required" }, { status: 400 });
   }
 
-  const url = `${FULLTEXT_API}?query=${encodeURIComponent(query)}`;
+  const url = `${getFulltextApiUrl()}?query=${encodeURIComponent(query)}`;
   try {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {

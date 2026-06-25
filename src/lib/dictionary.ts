@@ -112,6 +112,11 @@ export function detectInputType(term: string): 'chinese' | 'nonChinese' {
   return /[一-鿿㐀-䶿豈-﫿]/.test(term) ? 'chinese' : 'nonChinese';
 }
 
+// Strip everything that isn't a CJK character, for mixed Chinese+English input.
+export function extractChinese(term: string): string {
+  return term.replace(/[^一-鿿㐀-䶿豈-﫿]/g, '');
+}
+
 export function reverseLookup(term: string): DictionaryEntry[] {
   const results: DictionaryEntry[] = [];
   const seen = new Set<string>();

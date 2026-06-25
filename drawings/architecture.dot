@@ -1,0 +1,63 @@
+digraph architecture {
+    rankdir=TB
+    graph [fontname="Helvetica", fontsize=13, pad=0.5, nodesep=0.7, ranksep=0.9]
+    node  [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", margin="0.3,0.15"]
+    edge  [fontname="Helvetica", fontsize=10]
+
+    // ── External actor ──────────────────────────────────────────────────────
+    user [label="User\n(Browser)", shape=ellipse, fillcolor="#cce5ff", color="#336699"]
+
+    // ── Browser layer ────────────────────────────────────────────────────────
+    subgraph cluster_browser {
+        label="Browser"
+        style=filled
+        fillcolor="#eef4ff"
+        color="#336699"
+        fontname="Helvetica"
+        fontsize=12
+
+        react [label="React / Next.js\nFrontend", fillcolor="#61dafb", color="#20232a"]
+    }
+
+    // ── Cloud Run (Node.js) ───────────────────────────────────────────────────
+    subgraph cluster_backend {
+        label="Cloud Run  ·  Node.js"
+        style=filled
+        fillcolor="#e8f5e9"
+        color="#2e7d32"
+        fontname="Helvetica"
+        fontsize=12
+
+        nodejs [label="Next.js API Routes\n/api/lookup\n/api/interact\n/api/fulltext", fillcolor="#a5d6a7", color="#2e7d32"]
+    }
+
+    // ── Google Cloud services ─────────────────────────────────────────────────
+    subgraph cluster_gcp {
+        label="Google Cloud Services"
+        style=filled
+        fillcolor="#fff8e1"
+        color="#f57f17"
+        fontname="Helvetica"
+        fontsize=12
+
+        firestore  [label="Firestore\nSession data &\ninteraction counts", fillcolor="#ffcc02", color="#b8860b"]
+        recaptcha  [label="reCAPTCHA Enterprise\nHuman / bot scoring", fillcolor="#f48fb1", color="#880e4f"]
+        gcs        [label="GCS Bucket\nLibrary chapter\ntext files", fillcolor="#ffb74d", color="#e65100"]
+    }
+
+    // ── Full text search microservice ─────────────────────────────────────────
+    fulltextsearch [label="Full Text Search\nMicroservice\n(chinesenotes.com/findadvanced)", fillcolor="#ce93d8", color="#6a1b9a"]
+
+    // ── Edges ─────────────────────────────────────────────────────────────────
+    user       -> react         [label="page request / search input"]
+    react      -> nodejs        [label="REST API calls (fetch)"]
+
+    nodejs     -> firestore     [label="session read/write;\nincrement interaction count"]
+    nodejs     -> recaptcha     [label="verify token\n(after 25 requests/session)"]
+    nodejs     -> gcs           [label="stream chapter\ntext (ISR)"]
+    nodejs     -> fulltextsearch [label="full-text search query\n(FULLTEXT_API_URL)"]
+
+    fulltextsearch -> nodejs    [label="JSON results"]
+    nodejs         -> react     [label="JSON response"]
+    react          -> user      [label="rendered results"]
+}

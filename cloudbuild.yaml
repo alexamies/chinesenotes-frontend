@@ -8,11 +8,13 @@
 # _SERVICE_NAME to deploy the ntireader or hbreader variants:
 #
 #   gcloud builds submit --config cloudbuild.yaml \
-#     --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=ntireader-frontend,_TEXT_BUCKET=my-bucket .
+#     --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=ntireader-frontend,_TEXT_BUCKET=my-bucket,_FULLTEXT_API_URL=http://ntireader.org/findadvanced/ .
 #
-# _TEXT_BUCKET is optional on re-deploys: if omitted, the existing Cloud Run
-# value is preserved.  Set it once (manually or via substitution) and it
-# persists across future deploys that omit it.
+# _TEXT_BUCKET and _FULLTEXT_API_URL are optional on re-deploys: if omitted,
+# the existing Cloud Run values are preserved.  Set them once (manually or via
+# substitution) and they persist across future deploys that omit them.
+# If _FULLTEXT_API_URL is never set, the route falls back to a per-theme
+# default (e.g. http://ntireader.org/findadvanced/ for ntireader).
 #
 # Prerequisites before running gcloud builds submit:
 #   1. data/dictionary.json must exist locally (run `node scripts/copy-dictionary.mjs`
@@ -30,6 +32,7 @@ substitutions:
   _AR_REPO: cloud-run-source-deploy
   _RECAPTCHA_SITE_KEY: ""
   _TEXT_BUCKET: ""
+  _FULLTEXT_API_URL: ""
 
 steps:
   # Build the Docker image.  SITE_THEME is passed as a build arg so that
@@ -68,6 +71,9 @@ steps:
         ENV_VARS="SITE_THEME=${_SITE_THEME}"
         if [ -n "${_TEXT_BUCKET}" ]; then
           ENV_VARS="$$ENV_VARS,TEXT_BUCKET=${_TEXT_BUCKET}"
+        fi
+        if [ -n "${_FULLTEXT_API_URL}" ]; then
+          ENV_VARS="$$ENV_VARS,FULLTEXT_API_URL=${_FULLTEXT_API_URL}"
         fi
         gcloud run deploy ${_SERVICE_NAME} \
           --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${BUILD_ID} \

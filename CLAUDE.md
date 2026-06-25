@@ -22,10 +22,16 @@ Turbopack (Next.js default) requires native ARM64 binaries that are not installe
 
 ## Architecture
 
-Next.js 16 App Router, TypeScript, no external UI libraries.
+Next.js 16 App Router, TypeScript, no external UI libraries. For a high-level view of the full system (frontend, Node.js backend, Firestore, reCAPTCHA, GCS, and the full-text search microservice) see the [Architecture section in README.md](README.md#architecture) and the diagram at [`drawings/architecture.dot`](drawings/architecture.dot) / [`drawings/architecture.png`](drawings/architecture.png).
+
+Key source files:
 
 - `src/app/layout.tsx` — root layout; sets `<html lang="zh">` and page metadata
-- `src/app/page.tsx` — single dictionary page: text input + Find button + results placeholder; no event handlers wired yet
+- `src/app/page.tsx` — dictionary home page; delegates to `DictionaryApp`
 - `src/app/globals.css` — all styles; plain CSS, no CSS modules or Tailwind
-
-The app currently pre-renders as fully static content (`○` in build output). When search functionality is added, `page.tsx` will need to become a Client Component (`"use client"`) to manage input state and fetch results.
+- `src/app/api/lookup/route.ts` — dictionary lookup API (session-gated, Firestore-counted, reCAPTCHA-enforced above threshold)
+- `src/app/api/fulltext/route.ts` — proxies full-text search to the external microservice
+- `src/lib/dictionary.ts` — loads dictionary index; Chinese segmentation and reverse lookup
+- `src/lib/firestore.ts` — Firestore client; session interaction counting
+- `src/lib/session.ts` — signed session cookie generation and HMAC verification
+- `src/proxy.ts` — Next.js middleware; sets the session cookie on every response
