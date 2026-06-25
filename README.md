@@ -38,6 +38,7 @@ Key variables (see `.env.local.example` for the full list and comments):
 | `SESSION_SECRET` | Yes (for bot protection) | 32-byte hex secret — generate with `openssl rand -hex 32` |
 | `GOOGLE_CLOUD_PROJECT` | Yes (for Firestore + reCAPTCHA) | GCP project ID — set automatically by Cloud Run in production |
 | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` | No (disables reCAPTCHA if unset) | Score-based reCAPTCHA Enterprise site key |
+| `NEXT_PUBLIC_GA_TAG` | No (defaults to `G-03MVHHCXJ6`) | Google Analytics measurement/tracking ID — baked in at build time |
 
 Firestore and reCAPTCHA Enterprise both use Application Default Credentials. Authenticate locally with:
 
@@ -272,16 +273,22 @@ This runs three Cloud Build steps:
 2. `docker push` — pushes to Artifact Registry
 3. `gcloud run deploy` — deploys to Cloud Run and sets `SITE_THEME` and `TEXT_BUCKET` as runtime env vars
 
-Override substitutions for the other sites:
+Override substitutions for the other sites. Each site has a distinct Google Analytics tag which must be passed via `_GA_TAG` so it is baked into the static build:
+
+| Site | `_SITE_THEME` | `_GA_TAG` |
+|---|---|---|
+| chinesenotes.com | `chinesenotes` | `G-03MVHHCXJ6` (default — can be omitted) |
+| ntireader.org | `ntireader` | `UA-57634593-1` |
+| hbreader.org | `hbreader` | `UA-106394250-1` |
 
 ```shell
 # ntireader.org
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=${SERVICE_NAME},_TEXT_BUCKET=${TEXT_BUCKET} .
+  --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=${SERVICE_NAME},_GA_TAG=UA-57634593-1,_TEXT_BUCKET=${TEXT_BUCKET} .
 
 # hbreader.org
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions _SITE_THEME=hbreader,_SERVICE_NAME=${SERVICE_NAME},_TEXT_BUCKET=${TEXT_BUCKET} .
+  --substitutions _SITE_THEME=hbreader,_SERVICE_NAME=${SERVICE_NAME},_GA_TAG=UA-106394250-1,_TEXT_BUCKET=${TEXT_BUCKET} .
 ```
 
 ### Rendering strategy
@@ -293,9 +300,11 @@ gcloud builds submit --config cloudbuild.yaml \
 | `/library/[bookId]/[chapter]` | ISR (24 h cache) | GCS bucket (`TEXT_BUCKET`) at request time |
 | `/entry/[term]` | Static (build time) | `data/dictionary.json` |
 
-### Why SITE_THEME is a build-time argument
+### Why SITE_THEME and NEXT_PUBLIC_GA_TAG are build-time arguments
 
 Next.js pre-renders static and SSG pages at `npm run build` time. If `SITE_THEME` were only a Cloud Run runtime variable it would not be visible during the build, and pre-rendered pages would fall back to the `demo` theme. Passing it as a Docker `ARG` and `ENV` before `npm run build` ensures the theme is baked correctly into all pre-rendered library and entry pages.
+
+`NEXT_PUBLIC_GA_TAG` (prefixed `NEXT_PUBLIC_`) is inlined into the client bundle by Next.js at build time; it is not available at runtime. It must therefore also be passed as a Docker `ARG` so it is present when `npm run build` runs inside the container.
 
 ## Available commands
 

@@ -8,7 +8,9 @@
 # _SERVICE_NAME to deploy the ntireader or hbreader variants:
 #
 #   gcloud builds submit --config cloudbuild.yaml \
-#     --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=ntireader-frontend,_TEXT_BUCKET=my-bucket,_FULLTEXT_API_URL=http://ntireader.org/findadvanced/ .
+#     --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=ntireader-frontend,_GA_TAG=UA-57634593-1,_TEXT_BUCKET=my-bucket,_FULLTEXT_API_URL=http://ntireader.org/findadvanced/ .
+#
+# GA tag per site: chinesenotes → G-03MVHHCXJ6 (default), ntireader → UA-57634593-1, hbreader → UA-106394250-1
 #
 # _TEXT_BUCKET and _FULLTEXT_API_URL are optional on re-deploys: if omitted,
 # the existing Cloud Run values are preserved.  Set them once (manually or via
@@ -31,6 +33,7 @@ substitutions:
   _REGION: us-central1
   _AR_REPO: cloud-run-source-deploy
   _RECAPTCHA_SITE_KEY: ""
+  _GA_TAG: "G-03MVHHCXJ6"
   _TEXT_BUCKET: ""
   _FULLTEXT_API_URL: ""
 
@@ -43,6 +46,7 @@ steps:
       - build
       - --build-arg=SITE_THEME=${_SITE_THEME}
       - --build-arg=NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${_RECAPTCHA_SITE_KEY}
+      - --build-arg=NEXT_PUBLIC_GA_TAG=${_GA_TAG}
       - --tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${BUILD_ID}
       - --tag=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:latest
       - .

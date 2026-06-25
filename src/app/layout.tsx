@@ -55,6 +55,7 @@ export const metadata: Metadata = {
 
 const BUILD_DATE = new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC";
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
+const GA_TAG = process.env.NEXT_PUBLIC_GA_TAG ?? "G-03MVHHCXJ6";
 
 export default function RootLayout({
   children,
@@ -84,7 +85,7 @@ export default function RootLayout({
           .
         </footer>
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-03MVHHCXJ6"
+          src={`https://www.googletagmanager.com/gtag/js?id=${GA_TAG}`}
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -92,7 +93,7 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-03MVHHCXJ6');
+            gtag('config', '${GA_TAG}');
           `}
         </Script>
         {RECAPTCHA_SITE_KEY && (
