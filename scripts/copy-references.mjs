@@ -31,7 +31,9 @@ for (const { name, out, sources } of PAGES) {
 
   if (srcPath && existsSync(srcPath)) {
     const html = readFileSync(srcPath, "utf-8");
-    writeFileSync(out, html.replace(/src="external-link\.svg"/g, 'src="/external-link.svg"'));
+    writeFileSync(out, html
+      .replace(/src="\/images\/external-link\.svg"/g, 'src="/external-link.svg"')
+      .replace(/src="external-link\.svg"/g, 'src="/external-link.svg"'));
     console.log(`Copied ${name} HTML for SITE='${site}': ${srcPath}`);
   } else if (existsSync(out)) {
     console.log(`Source for SITE='${site ?? "demo"}' not found; keeping existing assets/${name}.html`);

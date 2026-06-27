@@ -18,6 +18,10 @@
 # generated dictionary (populated by copy-dictionary.mjs at build/dev time)
 /data
 
+# pre-cloned by Cloud Build clone-corpus step; not part of the source tree
+/active-corpus
+/taisho.html
+
 # misc
 .DS_Store
 *.pem

@@ -2,9 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { parseTaishoIndex, parseTaishoVolume } from "@/lib/taisho";
 
-export const dynamicParams = false;
-
 export async function generateStaticParams() {
+  if (process.env.SITE_THEME !== "ntireader") return [];
   const { sections } = await parseTaishoIndex();
   return sections
     .flatMap((s) => s.volumes)

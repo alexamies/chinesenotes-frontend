@@ -6,28 +6,26 @@ RUN npm ci
 
 COPY . .
 
-# Sparse-clone the corpus CSV index files for the selected SITE_THEME.
-# Only data/corpus is fetched; the large text files live in GCS, not git.
-# SITE_THEME and NEXT_PUBLIC_RECAPTCHA_SITE_KEY are baked into statically
-# pre-rendered pages at build time. Pass via --build-arg.
+# Corpus and taisho.html are pre-cloned by the Cloud Build clone-corpus step
+# and placed in the build context before docker build runs.
 ARG SITE_THEME=chinesenotes
 ENV SITE_THEME=$SITE_THEME
 
-RUN apk add --no-cache git && \
-    case "$SITE_THEME" in \
+COPY active-corpus /active-corpus
+COPY taisho.html /taisho.html
+RUN case "$SITE_THEME" in \
       ntireader) REPO=buddhist-dictionary ;; \
-      hbreader) REPO=hbreader ;; \
-      *) REPO=chinesenotes.com ;; \
+      hbreader)  REPO=hbreader ;; \
+      *)         REPO=chinesenotes.com ;; \
     esac && \
-    git clone --depth=1 --filter=blob:none --sparse \
-      "https://github.com/alexamies/${REPO}.git" "/${REPO}" && \
+    mkdir -p "/${REPO}/data" && \
+    ln -s /active-corpus "/${REPO}/data/corpus" && \
     case "$SITE_THEME" in \
       ntireader) \
-        git -C "/${REPO}" sparse-checkout set data/corpus html/taisho && \
-        git -C "/${REPO}" checkout HEAD -- html/taisho.html ;; \
-      *) git -C "/${REPO}" sparse-checkout set data/corpus ;; \
-    esac && \
-    cp -rp "/${REPO}/data/corpus" /active-corpus
+        mkdir -p /buddhist-dictionary/html && \
+        mv /taisho.html /buddhist-dictionary/html/taisho.html ;; \
+      *) rm -f /taisho.html ;; \
+    esac
 ARG NEXT_PUBLIC_RECAPTCHA_SITE_KEY
 ENV NEXT_PUBLIC_RECAPTCHA_SITE_KEY=$NEXT_PUBLIC_RECAPTCHA_SITE_KEY
 ARG NEXT_PUBLIC_GA_TAG=G-03MVHHCXJ6
