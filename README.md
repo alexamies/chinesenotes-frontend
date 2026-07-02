@@ -231,7 +231,7 @@ Mount the secret and set runtime env vars on the Cloud Run service. `GOOGLE_CLOU
 gcloud run services update ${SERVICE_NAME} \
   --region ${REGION} \
   --update-secrets SESSION_SECRET=session-secret:latest \
-  --update-env-vars NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${SITE_KEY},TEXT_BUCKET=${TEXT_BUCKET}
+  --update-env-vars NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${SITE_KEY},TEXT_BUCKET=${TEXT_BUCKET},FULLTEXT_API_URL=${FULLTEXT_API_URL}
 ```
 
 Chapter pages are rendered at request time (ISR, 24-hour cache) and fetch text from `gs://${TEXT_BUCKET}` using the Cloud Run service account credentials.

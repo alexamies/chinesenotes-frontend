@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
     }
     const data = await res.json();
     return NextResponse.json(data);
-  } catch {
+  } catch (err) {
+    console.error("fulltext fetch error:", err);
     return NextResponse.json({ error: "search unavailable" }, { status: 503 });
   }
 }
