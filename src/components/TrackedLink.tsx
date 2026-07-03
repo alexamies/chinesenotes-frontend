@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { recordInteraction } from "@/lib/recaptcha";
 
 interface TrackedLinkProps {
   href: string;
@@ -11,7 +12,7 @@ interface TrackedLinkProps {
 export default function TrackedLink({ href, className, children }: TrackedLinkProps) {
   function handleClick() {
     // Fire-and-forget: record the link interaction server-side without blocking navigation.
-    fetch("/api/interact", { method: "POST" }).catch(() => {});
+    recordInteraction("link_click");
   }
 
   return (

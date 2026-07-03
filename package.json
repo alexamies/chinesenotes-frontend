@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "session-stats": "node scripts/session-stats.mjs"
   },
   "dependencies": {
     "@google-cloud/firestore": "^8.6.0",

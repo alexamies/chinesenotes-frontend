@@ -79,3 +79,41 @@ export async function getRecaptchaToken(action: string): Promise<string | null> 
     });
   });
 }
+
+async function postInteraction(token: string | null, action: string): Promise<Response> {
+  return fetch("/api/interact", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(token ? { recaptchaToken: token, recaptchaAction: action } : {}),
+  });
+}
+
+/**
+ * Records a non-lookup interaction (library link click, library page view)
+ * against the session, subject to the same reCAPTCHA enforcement as
+ * dictionary lookups (see /api/interact). Fire-and-forget: never throws, and
+ * callers should not await it for navigation-blocking purposes — by design
+ * this only stops sessions that already crossed the threshold on an earlier
+ * request, not the request that first crosses it.
+ */
+export async function recordInteraction(action: string): Promise<void> {
+  try {
+    const token = isKnownOverThreshold() ? await getRecaptchaToken(action) : null;
+    let response = await postInteraction(token, action);
+
+    if (response.status === 403 && !token) {
+      const retryToken = await getRecaptchaToken(action);
+      if (retryToken) {
+        response = await postInteraction(retryToken, action);
+      }
+    }
+
+    if (!response.ok) return;
+    const data = await response.json();
+    if (typeof data.interactionCount === "number") {
+      updateInteractionCount(data.interactionCount);
+    }
+  } catch (err) {
+    console.warn("[recaptcha] recordInteraction failed", { action, err });
+  }
+}

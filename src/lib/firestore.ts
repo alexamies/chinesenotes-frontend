@@ -1,4 +1,4 @@
-import { Firestore } from "@google-cloud/firestore";
+import { Firestore, FieldValue } from "@google-cloud/firestore";
 
 let _db: Firestore | undefined;
 
@@ -19,6 +19,12 @@ function todayISO(): string {
  * Atomically increments the daily interaction count for a session.
  * Resets to 1 when the calendar date changes.
  * Uses merge so humanVerified / botCount are never overwritten.
+ * Sets updatedAt on every call (every lookup/interact request), so it
+ * doubles as a last-active timestamp for the session. Also stamps `site`
+ * from SITE_THEME so scripts/session-stats.mjs can break counts down per
+ * deployment — chinesenotes.com, ntireader.org, and hbreader.org all share
+ * one GCP project/Firestore database, and session IDs are random UUIDs with
+ * no other way to tell which site created them.
  * Returns the new count, or 0 if Firestore is unavailable.
  */
 export async function incrementInteraction(sessionId: string): Promise<number> {
@@ -26,6 +32,7 @@ export async function incrementInteraction(sessionId: string): Promise<number> {
     const db = getDb();
     const ref = db.collection("sessions").doc(sessionId);
     const today = todayISO();
+    const site = process.env.SITE_THEME ?? "demo";
 
     return await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
@@ -35,7 +42,11 @@ export async function incrementInteraction(sessionId: string): Promise<number> {
       } else {
         count = ((snap.data()?.count as number) ?? 0) + 1;
       }
-      tx.set(ref, { count, date: today }, { merge: true });
+      tx.set(
+        ref,
+        { count, date: today, site, updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
       return count;
     });
   } catch (err) {

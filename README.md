@@ -36,8 +36,8 @@ Key variables (see `.env.local.example` for the full list and comments):
 | `SITE_THEME` | No (defaults to `demo`) | `demo` \| `chinesenotes` \| `ntireader` \| `hbreader` |
 | `TEXT_BUCKET` | Yes (for Library reader) | GCS bucket holding chapter text files, e.g. `my-chinesenotes-text` |
 | `SESSION_SECRET` | Yes (for bot protection) | 32-byte hex secret — generate with `openssl rand -hex 32` |
-| `GOOGLE_CLOUD_PROJECT` | Yes (for Firestore + reCAPTCHA) | GCP project ID — set automatically by Cloud Run in production |
-| `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` | No (disables reCAPTCHA if unset) | Score-based reCAPTCHA Enterprise site key |
+| `GOOGLE_CLOUD_PROJECT` | Yes (for Firestore + reCAPTCHA) | GCP project ID — Cloud Run does **not** set this automatically; `cloudbuild.yaml` passes it explicitly as `GOOGLE_CLOUD_PROJECT=$PROJECT_ID` |
+| `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` | No (disables reCAPTCHA if unset) | Score-based reCAPTCHA Enterprise site key — baked in at build time, see below |
 | `NEXT_PUBLIC_GA_TAG` | No (defaults to `G-03MVHHCXJ6`) | Google Analytics measurement/tracking ID — baked in at build time |
 
 Firestore and reCAPTCHA Enterprise both use Application Default Credentials. Authenticate locally with:
@@ -225,13 +225,13 @@ gcloud secrets add-iam-policy-binding session-secret \
   --role=roles/secretmanager.secretAccessor
 ```
 
-Mount the secret and set runtime env vars on the Cloud Run service. `GOOGLE_CLOUD_PROJECT` is injected automatically by Cloud Run and does not need to be set manually.
+Mount the secret on the Cloud Run service. Note that `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` is **not** set here — it is a `NEXT_PUBLIC_` variable that Next.js inlines into the client bundle at `npm run build` time, so setting it as a Cloud Run runtime env var has no effect on the served pages. It must instead be passed as the `_RECAPTCHA_SITE_KEY` substitution on `gcloud builds submit` (see Deploy below), the same way `_GA_TAG` is. `GOOGLE_CLOUD_PROJECT` is also **not** set automatically by Cloud Run (unlike App Engine/Cloud Functions) — `cloudbuild.yaml` sets it explicitly on every deploy as `GOOGLE_CLOUD_PROJECT=$PROJECT_ID`, since the reCAPTCHA Enterprise assessment call and Firestore client both require it at runtime.
 
 ```shell
 gcloud run services update ${SERVICE_NAME} \
   --region ${REGION} \
   --update-secrets SESSION_SECRET=session-secret:latest \
-  --update-env-vars NEXT_PUBLIC_RECAPTCHA_SITE_KEY=${SITE_KEY},TEXT_BUCKET=${TEXT_BUCKET},FULLTEXT_API_URL=${FULLTEXT_API_URL}
+  --update-env-vars TEXT_BUCKET=${TEXT_BUCKET},FULLTEXT_API_URL=${FULLTEXT_API_URL}
 ```
 
 Chapter pages are rendered at request time (ISR, 24-hour cache) and fetch text from `gs://${TEXT_BUCKET}` using the Cloud Run service account credentials.
@@ -264,16 +264,18 @@ This writes `assets/references.html` and `assets/abbreviations.html`, which are 
 
 ```shell
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions _SITE_THEME=chinesenotes,_SERVICE_NAME=${SERVICE_NAME},_TEXT_BUCKET=${TEXT_BUCKET} .
+  --substitutions _SITE_THEME=chinesenotes,_SERVICE_NAME=${SERVICE_NAME},_TEXT_BUCKET=${TEXT_BUCKET},_RECAPTCHA_SITE_KEY=${SITE_KEY} .
 ```
 
 This runs three Cloud Build steps:
 
-1. `docker build` — sparse-clones the corpus CSV index files from the repo matching `SITE_THEME` (e.g. `github.com/alexamies/buddhist-dictionary` for ntireader), then builds the Next.js app with `SITE_THEME` baked in
+1. `docker build` — sparse-clones the corpus CSV index files from the repo matching `SITE_THEME` (e.g. `github.com/alexamies/buddhist-dictionary` for ntireader), then builds the Next.js app with `SITE_THEME` and `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` baked in
 2. `docker push` — pushes to Artifact Registry
-3. `gcloud run deploy` — deploys to Cloud Run and sets `SITE_THEME` and `TEXT_BUCKET` as runtime env vars
+3. `gcloud run deploy` — deploys to Cloud Run and sets `SITE_THEME` and `GOOGLE_CLOUD_PROJECT` as runtime env vars (plus `TEXT_BUCKET`/`FULLTEXT_API_URL` when provided)
 
-Override substitutions for the other sites. Each site has a distinct Google Analytics tag which must be passed via `_GA_TAG` so it is baked into the static build:
+`_RECAPTCHA_SITE_KEY` defaults to an empty string in `cloudbuild.yaml`. **It must be passed explicitly on every deploy** — omitting it silently disables reCAPTCHA for that build, since the site key is baked into the client bundle at build time and cannot be patched in afterward via `gcloud run services update`. If your reCAPTCHA Enterprise key shows "no activity"/"hasn't requested a token" in the Cloud Console, this is the first thing to check: view-source the deployed page and confirm a `recaptcha/enterprise.js?render=...` script tag is present.
+
+Override substitutions for the other sites. Each site has a distinct Google Analytics tag which must be passed via `_GA_TAG` so it is baked into the static build. Use the same `SITE_KEY` for all three sites unless you registered separate reCAPTCHA Enterprise keys per domain:
 
 | Site | `_SITE_THEME` | `_GA_TAG` |
 |---|---|---|
@@ -284,11 +286,11 @@ Override substitutions for the other sites. Each site has a distinct Google Anal
 ```shell
 # ntireader.org
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=${SERVICE_NAME},_GA_TAG=UA-57634593-1,_TEXT_BUCKET=${TEXT_BUCKET} .
+  --substitutions _SITE_THEME=ntireader,_SERVICE_NAME=${SERVICE_NAME},_GA_TAG=UA-57634593-1,_TEXT_BUCKET=${TEXT_BUCKET},_RECAPTCHA_SITE_KEY=${SITE_KEY} .
 
 # hbreader.org
 gcloud builds submit --config cloudbuild.yaml \
-  --substitutions _SITE_THEME=hbreader,_SERVICE_NAME=${SERVICE_NAME},_GA_TAG=UA-106394250-1,_TEXT_BUCKET=${TEXT_BUCKET} .
+  --substitutions _SITE_THEME=hbreader,_SERVICE_NAME=${SERVICE_NAME},_GA_TAG=UA-106394250-1,_TEXT_BUCKET=${TEXT_BUCKET},_RECAPTCHA_SITE_KEY=${SITE_KEY} .
 ```
 
 ### Rendering strategy
@@ -300,11 +302,11 @@ gcloud builds submit --config cloudbuild.yaml \
 | `/library/[bookId]/[chapter]` | ISR (24 h cache) | GCS bucket (`TEXT_BUCKET`) at request time |
 | `/entry/[term]` | Static (build time) | `data/dictionary.json` |
 
-### Why SITE_THEME and NEXT_PUBLIC_GA_TAG are build-time arguments
+### Why SITE_THEME, NEXT_PUBLIC_GA_TAG, and NEXT_PUBLIC_RECAPTCHA_SITE_KEY are build-time arguments
 
 Next.js pre-renders static and SSG pages at `npm run build` time. If `SITE_THEME` were only a Cloud Run runtime variable it would not be visible during the build, and pre-rendered pages would fall back to the `demo` theme. Passing it as a Docker `ARG` and `ENV` before `npm run build` ensures the theme is baked correctly into all pre-rendered library and entry pages.
 
-`NEXT_PUBLIC_GA_TAG` (prefixed `NEXT_PUBLIC_`) is inlined into the client bundle by Next.js at build time; it is not available at runtime. It must therefore also be passed as a Docker `ARG` so it is present when `npm run build` runs inside the container.
+Any `NEXT_PUBLIC_`-prefixed variable — `NEXT_PUBLIC_GA_TAG` and `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` — is inlined into the client bundle by Next.js at build time; it is not read at runtime. Both must be passed as Docker `ARG`s (via `_GA_TAG`/`_RECAPTCHA_SITE_KEY` substitutions) so they're present when `npm run build` runs inside the container. Setting them later with `gcloud run services update --update-env-vars` has no effect on already-built pages — the value is frozen into the JS bundle at build time. This is the reason the reCAPTCHA widget can silently never load in production: if `_RECAPTCHA_SITE_KEY` is omitted from a deploy, the build succeeds with no error, but `src/app/layout.tsx`'s conditional script tag is compiled out and the site key never ships.
 
 ## Available commands
 
@@ -314,6 +316,31 @@ Next.js pre-renders static and SSG pages at `npm run build` time. If `SITE_THEME
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm test` | Run unit tests (Vitest) |
+| `npm run session-stats` | Report Firestore `sessions` collection counts (see below) |
+
+### Session statistics
+
+`npm run session-stats` runs `scripts/session-stats.mjs`. chinesenotes.com, ntireader.org, and hbreader.org all share one GCP project, so the Firestore `sessions` collection holds sessions from all three sites with no other way to tell them apart — session IDs are random UUIDs. Each session doc is stamped with a `site` field (from `SITE_THEME`) so the script can break results down per site; sessions created before that field was added show up as "unattributed (pre-migration)".
+
+It reports, both overall and per site:
+
+- Total sessions (all-time — one doc per unique visitor; the cookie lasts a year, so returning visitors reuse the same doc rather than creating a new one)
+- Sessions active in the last hour (`updatedAt` — set on every `/api/lookup` and `/api/interact` call)
+- Sessions with `humanVerified == true`
+- Sessions with `botCount >= 1`
+
+The last two are the ground truth for whether reCAPTCHA assessments are actually happening — they're only ever written after a real call to the reCAPTCHA Enterprise API. The script also prints the 10 most recently updated sessions as a sanity check — if that list is stale or empty despite live traffic, writes aren't happening at all (check Cloud Run logs for `Firestore incrementInteraction failed`), which is a different problem than "the numbers are just lower than expected."
+
+**Why the "active in the last hour" number can look surprisingly low even with steady request volume:** it only counts sessions that hit `/api/lookup` (a dictionary search) or `/api/interact` (a Library page view or link click), and both of those require the client to actually execute JavaScript. Raw request-per-second figures (from Cloud Run/load balancer metrics) include everything — static assets, crawlers, and any client that doesn't run JS at all — none of which ever touch this collection. A large gap between overall request rate and this count is itself a signal worth paying attention to, not a bug in the report.
+
+The script does a single unfiltered read with a field-mask projection and aggregates in JS, rather than per-site `.count()` queries, because Firestore would require a composite index for a query combining an equality filter (`site == X`) with a range filter (`updatedAt >= Y`) on a different field. The collection is small (one doc per unique visitor, not per request), so a full scan is cheap; if it grows into the tens of thousands, switch to aggregate queries with the composite indexes Firestore's error messages will link to.
+
+Requires Application Default Credentials and the target project:
+
+```shell
+gcloud auth application-default login
+GOOGLE_CLOUD_PROJECT=<project-id> npm run session-stats
+```
 
 ## Architecture
 

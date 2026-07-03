@@ -100,6 +100,9 @@ steps:
   # are left as previously configured.
   # TEXT_BUCKET is only added to --update-env-vars when _TEXT_BUCKET is
   # non-empty so that a blank substitution never overwrites an existing value.
+  # GOOGLE_CLOUD_PROJECT is required at runtime by the reCAPTCHA Enterprise
+  # assessment call in src/app/api/lookup/route.ts; Cloud Run does not set it
+  # automatically the way App Engine/Cloud Functions do.
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     id: deploy
     waitFor: [push]
@@ -107,7 +110,7 @@ steps:
     args:
       - -c
       - |
-        ENV_VARS="SITE_THEME=${_SITE_THEME}"
+        ENV_VARS="SITE_THEME=${_SITE_THEME},GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
         if [ -n "${_TEXT_BUCKET}" ]; then
           ENV_VARS="$$ENV_VARS,TEXT_BUCKET=${_TEXT_BUCKET}"
         fi

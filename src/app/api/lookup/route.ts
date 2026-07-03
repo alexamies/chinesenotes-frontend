@@ -1,61 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleAuth } from "google-auth-library";
 import { lookupTerm, detectInputType, reverseLookup } from "@/lib/dictionary";
 import { segmentText } from "@/lib/segmentation";
 import { verifySession } from "@/lib/session";
-import { incrementInteraction, getRecaptchaStatus, recordRecaptchaResult } from "@/lib/firestore";
-
-const RECAPTCHA_PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT ?? "";
-const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
-const RECAPTCHA_SCORE_THRESHOLD = 0.5;
-const INTERACTION_THRESHOLD = 25;
-
-const auth = new GoogleAuth({
-  scopes: ["https://www.googleapis.com/auth/cloud-platform"],
-});
-
-async function verifyRecaptchaToken(token: string, action: string): Promise<boolean> {
-  if (!RECAPTCHA_PROJECT_ID || !RECAPTCHA_SITE_KEY) {
-    return true;
-  }
-  try {
-    const accessToken = await auth.getAccessToken();
-    const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${RECAPTCHA_PROJECT_ID}/assessments`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        event: { token, siteKey: RECAPTCHA_SITE_KEY, expectedAction: action },
-      }),
-    });
-    if (!res.ok) {
-      console.error("[lookup] reCAPTCHA API returned non-OK status, failing open", {
-        status: res.status,
-        action,
-      });
-      return true;
-    }
-    const data = await res.json();
-    const tokenValid = data.tokenProperties?.valid === true;
-    const score = data.riskAnalysis?.score ?? 0;
-    if (!tokenValid || score < RECAPTCHA_SCORE_THRESHOLD) {
-      console.warn("[lookup] reCAPTCHA assessment rejected", {
-        tokenValid,
-        score,
-        action,
-        invalidReason: data.tokenProperties?.invalidReason,
-      });
-    }
-    return tokenValid && score >= RECAPTCHA_SCORE_THRESHOLD;
-  } catch (err) {
-    // Fail open: don't block legitimate users if reCAPTCHA is unreachable.
-    console.error("[lookup] reCAPTCHA verification threw, failing open", err);
-    return true;
-  }
-}
+import { incrementInteraction } from "@/lib/firestore";
+import { enforceRecaptchaGate } from "@/lib/recaptchaGate";
 
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
@@ -86,43 +34,14 @@ export async function GET(request: NextRequest) {
   const interactionCount = await incrementInteraction(sessionId);
 
   // --- reCAPTCHA enforcement above threshold ---
-  if (interactionCount > INTERACTION_THRESHOLD && RECAPTCHA_SITE_KEY) {
-    const { humanVerified, botCount } = await getRecaptchaStatus(sessionId);
-
-    if (botCount >= 3) {
-      console.warn("[lookup] 403 session identified as bot", { ip, sessionId, botCount });
-      return NextResponse.json({ found: false, error: "Access denied" }, { status: 403 });
-    }
-
-    if (!humanVerified) {
-      const recaptchaToken = searchParams.get("recaptchaToken");
-      const recaptchaAction = searchParams.get("recaptchaAction") ?? "lookup";
-      if (!recaptchaToken) {
-        console.warn("[lookup] 403 reCAPTCHA required but token missing", {
-          ip,
-          sessionId,
-          interactionCount,
-        });
-        return NextResponse.json(
-          { found: false, requiresRecaptcha: true, interactionCount },
-          { status: 403 }
-        );
-      }
-      const valid = await verifyRecaptchaToken(recaptchaToken, recaptchaAction);
-      await recordRecaptchaResult(sessionId, valid);
-      if (!valid) {
-        console.warn("[lookup] 403 reCAPTCHA verification failed", {
-          ip,
-          sessionId,
-          interactionCount,
-          recaptchaAction,
-        });
-        return NextResponse.json(
-          { found: false, error: "reCAPTCHA verification failed", interactionCount },
-          { status: 403 }
-        );
-      }
-    }
+  const recaptchaToken = searchParams.get("recaptchaToken");
+  const recaptchaAction = searchParams.get("recaptchaAction") ?? "lookup";
+  const gate = await enforceRecaptchaGate(sessionId, interactionCount, recaptchaToken, recaptchaAction, {
+    ip,
+    sessionId,
+  });
+  if (gate.blocked) {
+    return NextResponse.json({ found: false, ...gate.body }, { status: gate.status });
   }
 
   // --- Lookup ---
