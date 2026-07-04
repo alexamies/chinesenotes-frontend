@@ -52,11 +52,11 @@ export default async function ChapterPage({ params }: PageProps) {
   return (
     <main className="max-w-2xl mx-auto mt-12 px-6 pb-16">
       <nav className="text-sm text-gray-500 mb-6">
-        <Link href="/library" className="hover:underline text-primary">
+        <Link href="/library" prefetch={false} className="hover:underline text-primary">
           Library
         </Link>
         <span className="mx-2">›</span>
-        <Link href={`/library/${bookId}`} className="hover:underline text-primary">
+        <Link href={`/library/${bookId}`} prefetch={false} className="hover:underline text-primary">
           {work.titleEnglish}
         </Link>
         <span className="mx-2">›</span>

@@ -30,6 +30,7 @@ export default async function LibraryPage() {
             <Link
               key={work.id}
               href={`/library/${work.id}`}
+              prefetch={false}
               className="flex items-start p-6 hover:bg-gray-50 transition-colors group"
             >
               <div>

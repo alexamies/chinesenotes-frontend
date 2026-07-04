@@ -13,6 +13,7 @@ function SectionGroup({ section }: { section: TaishoSection }) {
             {vol.volumeId ? (
               <Link
                 href={`/library/taisho/${vol.volumeId}`}
+                prefetch={false}
                 className="text-base font-semibold text-primary hover:underline"
               >
                 {vol.volumeTitle}
@@ -33,6 +34,7 @@ function SectionGroup({ section }: { section: TaishoSection }) {
                   <Link
                     key={t.id}
                     href={`/library/${t.id}`}
+                    prefetch={false}
                     className="text-sm text-primary hover:underline"
                   >
                     {t.label}

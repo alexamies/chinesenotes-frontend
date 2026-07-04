@@ -26,7 +26,7 @@ export default async function TaishoVolumePage({ params }: Props) {
   return (
     <main className="max-w-2xl mx-auto mt-12 px-6 pb-16">
       <nav className="text-sm text-gray-500 mb-4">
-        <Link href="/library" className="hover:underline text-primary">
+        <Link href="/library" prefetch={false} className="hover:underline text-primary">
           Library
         </Link>
         {" › "}
@@ -45,6 +45,7 @@ export default async function TaishoVolumePage({ params }: Props) {
           <Link
             key={text.id}
             href={`/library/${text.id}`}
+            prefetch={false}
             className="flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors group"
           >
             <span className="text-sm text-gray-400 w-8 shrink-0 pt-0.5 text-right">

@@ -342,6 +342,17 @@ gcloud auth application-default login
 GOOGLE_CLOUD_PROJECT=<project-id> npm run session-stats
 ```
 
+Number of dictionary lookups in the last hour
+
+```shell
+gcloud logging read '
+   resource.type="cloud_run_revision"
+   resource.labels.service_name="chinesenotes-frontend"
+   httpRequest.requestUrl:"/api/lookup"
+   timestamp>="'"$(date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)"'"
+   ' --limit=10000 --format="value(timestamp)" | wc -l
+```
+
 ## Architecture
 
 The system is composed of six main components. The source diagram is in [`drawings/architecture.dot`](drawings/architecture.dot); see [`drawings/README.md`](drawings/README.md) for how to regenerate the PNG.

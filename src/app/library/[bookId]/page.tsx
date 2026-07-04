@@ -21,7 +21,7 @@ export default async function BookPage({ params }: PageProps) {
   return (
     <main className="max-w-2xl mx-auto mt-12 px-6 pb-16">
       <nav className="text-sm text-gray-500 mb-6">
-        <Link href="/library" className="hover:underline text-primary">Library</Link>
+        <Link href="/library" prefetch={false} className="hover:underline text-primary">Library</Link>
         <span className="mx-2">›</span>
         <span>{work.titleEnglish}</span>
       </nav>
@@ -35,6 +35,7 @@ export default async function BookPage({ params }: PageProps) {
           <Link
             key={chapterId}
             href={`/library/${bookId}/${chapterId}`}
+            prefetch={false}
             className="flex items-center px-6 py-3 hover:bg-gray-50 transition-colors group"
           >
             <span className="text-base text-gray-800 group-hover:text-primary">{title}</span>
