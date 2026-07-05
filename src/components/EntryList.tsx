@@ -1,4 +1,5 @@
 import TrackedLink from "@/components/TrackedLink";
+import ContainingStringAction from "@/components/ContainingStringAction";
 import type { Segment } from "@/types/dictionary";
 
 interface EntryListProps {
@@ -52,6 +53,7 @@ export default function EntryList({ segments, searchText }: EntryListProps) {
           })}
         </tbody>
       </table>
+      <ContainingStringAction term={searchText} />
     </div>
   );
 }

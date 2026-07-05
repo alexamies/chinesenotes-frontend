@@ -104,7 +104,22 @@ function getSubstringIndex(): Map<string, string[]> {
 }
 
 export function findContainingTerms(term: string): string[] {
-  return getSubstringIndex().get(term) ?? [];
+  const precomputed = getSubstringIndex().get(term);
+  if (precomputed) return precomputed;
+
+  // The precomputed index only has entries keyed by strings that are
+  // themselves headwords. Fall back to a live scan for terms that span
+  // multiple dictionary entries (e.g. a segmented multi-character input
+  // like "置之", which is not itself a headword but is a substring of
+  // "置之不理").
+  const matches: string[] = [];
+  for (const headword of getChineseIndex().keys()) {
+    if (headword !== term && headword.includes(term)) {
+      matches.push(headword);
+    }
+  }
+  matches.sort((a, b) => b.length - a.length || a.localeCompare(b));
+  return matches.slice(0, 50);
 }
 
 // CJK Unified Ideographs + Extension A + Compatibility Ideographs
