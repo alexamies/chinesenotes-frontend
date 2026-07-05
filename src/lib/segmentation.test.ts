@@ -77,4 +77,26 @@ describe("segmentText", () => {
     const result = segmentText("教育學校機構", lookup);
     expect(result.map((s) => s.text)).toEqual(["教育", "學校", "機構"]);
   });
+
+  it("groups a run of punctuation/non-CJK characters into a single segment", () => {
+    const result = segmentText("[0064b01] 教育。", lookup);
+    expect(result.map((s) => s.text)).toEqual(["[0064b01] ", "教育", "。"]);
+  });
+
+  it("prefers a longer word starting later over a shorter greedy match at the start", () => {
+    // 僧伽提和 is a four-character headword; a naive left-to-right greedy
+    // scan matches 請僧 first (if present) and never finds 僧伽提和.
+    const bimm = new Map<string, DictionaryEntry[]>([
+      ["請", [entry("請", "qǐng", "please")]],
+      ["僧", [entry("僧", "sēng", "monk")]],
+      ["伽", [entry("伽", "jiā", "(transliteration)")]],
+      ["提", [entry("提", "tí", "to lift")]],
+      ["和", [entry("和", "hé", "and")]],
+      ["請僧", [entry("請僧", "qǐng sēng", "to invite a monk")]],
+      ["僧伽提和", [entry("僧伽提和", "Sēngjiātíhé", "Samghadeva")]],
+    ]);
+    const bimmLookup = (term: string) => bimm.get(term);
+    const result = segmentText("請僧伽提和", bimmLookup);
+    expect(result.map((s) => s.text)).toEqual(["請", "僧伽提和"]);
+  });
 });
