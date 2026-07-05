@@ -33,6 +33,7 @@ export interface Work {
   author: string;      // period/date, e.g. "Pre-Han", "c. 479–221 BCE"
   description: string;
   csvPath: string;     // relative path from corpus root, e.g. "taisho/t0099.csv"
+  introPath: string;   // relative path used as GCS key for the intro/colophon HTML fragment, e.g. "taisho/t0099_00.txt"
 }
 
 export interface Chapter {
@@ -64,8 +65,9 @@ export async function getCatalog(): Promise<Work[]> {
     const id = path.basename(csvFile, ".csv");
     const { english, chinese } = splitTitle(parts[2] ?? "");
     const description = (parts[3] ?? "").trim();
+    const introPath = (parts[4] ?? "").trim();
     const author = (parts[7] ?? "").trim();
-    works.push({ id, titleEnglish: english, titleChinese: chinese, author, description, csvPath: csvFile });
+    works.push({ id, titleEnglish: english, titleChinese: chinese, author, description, csvPath: csvFile, introPath });
   }
   return works;
 }
@@ -111,4 +113,13 @@ export async function getChapterTitle(work: Work, chapterId: string): Promise<st
 export async function getChapterText(sourcePath: string): Promise<string> {
   const [contents] = await storage.bucket(getGcsBucket()).file(sourcePath).download();
   return contents.toString("utf-8");
+}
+
+export async function getWorkIntro(work: Work): Promise<string | null> {
+  if (!work.introPath) return null;
+  try {
+    return await getChapterText(work.introPath);
+  } catch {
+    return null;
+  }
 }

@@ -147,7 +147,7 @@ src/
     library/
       page.tsx                        # library index (lists all works from collections.csv)
       [bookId]/
-        page.tsx                      # chapter list (pre-rendered for all books at build time)
+        page.tsx                      # chapter list (ISR, intro fragment fetched from GCS at request time)
         [chapter]/
           page.tsx                    # chapter reader (ISR, fetches text from GCS at request time)
     api/
@@ -298,7 +298,7 @@ gcloud builds submit --config cloudbuild.yaml \
 | Route | Strategy | Data source |
 |---|---|---|
 | `/library` | Static (build time) | `collections.csv` cloned in Dockerfile |
-| `/library/[bookId]` | Static (build time) | per-book `.csv` cloned in Dockerfile |
+| `/library/[bookId]` | ISR (24 h cache) | per-book `.csv` cloned in Dockerfile, plus intro/colophon fragment from GCS (`TEXT_BUCKET`) at request time |
 | `/library/[bookId]/[chapter]` | ISR (24 h cache) | GCS bucket (`TEXT_BUCKET`) at request time |
 | `/entry/[term]` | Static (build time) | `data/dictionary.json` |
 
