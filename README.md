@@ -121,6 +121,53 @@ where `sourcePath` is of the form `bookId/chapterId.txt` — the same path used 
 
 Chapter text files are **not** stored in git. They live in a GCS bucket and are fetched at request time using Application Default Credentials (your local `gcloud auth application-default login` in dev; the Cloud Run service account in production). Set `TEXT_BUCKET` to the name of that bucket.
 
+### Running with Docker
+
+`npm run dev` is the normal way to develop, but you can also build and run the production `Dockerfile` locally — useful for reproducing a deployment issue without going through Cloud Build.
+
+The `Dockerfile` expects two inputs at the project root that Cloud Build normally generates in the `clone-corpus` step (see [Deployment](#deployment)): an `active-corpus/` directory and a `taisho.html` file. Locally, create them from the sibling corpus repo for the theme you're testing (see [Corpus](#corpus) above for the repo mapping):
+
+```shell
+# chinesenotes / demo, hbreader: any theme other than ntireader
+cp -r ../chinesenotes.com/data/corpus active-corpus
+touch taisho.html
+
+# ntireader — also needs the Taisho index page
+cp -r ../buddhist-dictionary/data/corpus active-corpus
+cp ../buddhist-dictionary/html/taisho.html taisho.html
+```
+
+Also build `data/dictionary.json` first, the same way you would [before a real deploy](#building-static-assets-before-deploying) — the Docker build has no access to the sibling dictionary source repos, only what's already on disk in the build context:
+
+```shell
+SITE=ntireader node scripts/copy-dictionary.mjs
+```
+
+Then build the image, passing `SITE_THEME` (and, if you're testing reCAPTCHA or GA, `NEXT_PUBLIC_RECAPTCHA_SITE_KEY`/`NEXT_PUBLIC_GA_TAG`) as build args, exactly as `cloudbuild.yaml` does:
+
+```shell
+docker build \
+  --build-arg SITE_THEME=ntireader \
+  -t chinesenotes-frontend-local .
+```
+
+Run it, passing the same runtime env vars Cloud Run would set (see the [variables table](#development) above). Mount your local Application Default Credentials read-only so Firestore/reCAPTCHA/GCS calls work the same as in dev:
+
+```shell
+docker run --rm -p 3000:3000 \
+  -e SITE_THEME=ntireader \
+  -e SESSION_SECRET=$(openssl rand -hex 32) \
+  -e GOOGLE_CLOUD_PROJECT=<project-id> \
+  -e TEXT_BUCKET=<bucket-name> \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json \
+  -v ~/.config/gcloud:/root/.config/gcloud:ro \
+  chinesenotes-frontend-local
+```
+
+Open http://localhost:3000. Unlike `npm run dev`, this serves the actual production build (`next build` + `node server.js` from `.next/standalone`), so it's the closest local approximation of what Cloud Run runs — including the build-time-only behavior of `SITE_THEME` and `NEXT_PUBLIC_*` vars described in [Why SITE_THEME, NEXT_PUBLIC_GA_TAG, and NEXT_PUBLIC_RECAPTCHA_SITE_KEY are build-time arguments](#why-site_theme-next_public_ga_tag-and-next_public_recaptcha_site_key-are-build-time-arguments).
+
+`active-corpus` and `taisho.html` are gitignored — delete them (or leave them; they won't be picked up by anything except a local `docker build`) once you're done.
+
 ## Bot protection
 
 Every browser that loads any page receives a signed `HttpOnly SameSite=Strict` session cookie (`cn_sid`) set by the Next.js proxy layer. The cookie value is `{uuid}.{HMAC-SHA256(SESSION_SECRET, uuid)}`.

@@ -18,20 +18,27 @@ interface SearchDocument {
   MatchDetails: MatchDetails;
 }
 
-function glossFileToChapterPath(glossFile: string): string | null {
-  const parts = glossFile.split("/");
-  if (parts.length === 2) {
-    const bookId = parts[0];
-    const chapterId = parts[1].replace(/\.html$/, "");
-    if (bookId && chapterId) return `/library/${bookId}/${chapterId}`;
-  }
-  return null;
+// GlossFile/CollectionFile paths from the full-text search microservice are
+// grouped by corpus folder (e.g. "taisho/t0202_05.html"), not by book ID —
+// the directory segment is not meaningful for routing here (it's "taisho"
+// for every Taisho work). Only the basename maps onto this app's bookId /
+// chapterId, the same way src/lib/corpus.ts derives them via path.basename.
+function basename(filePath: string): string {
+  const idx = filePath.lastIndexOf("/");
+  return (idx === -1 ? filePath : filePath.slice(idx + 1)).replace(/\.html$/, "");
 }
 
 function collectionFileToBookPath(collectionFile: string): string | null {
   if (!collectionFile) return null;
-  const bookId = collectionFile.replace(/\.html$/, "");
+  const bookId = basename(collectionFile);
   return bookId ? `/library/${bookId}` : null;
+}
+
+function glossFileToChapterPath(glossFile: string, collectionFile: string): string | null {
+  const bookPath = collectionFileToBookPath(collectionFile);
+  const chapterId = basename(glossFile);
+  if (!bookPath || !chapterId) return null;
+  return `${bookPath}/${chapterId}`;
 }
 
 function renderSnippet(snippet: string, longestMatch: string) {
@@ -154,7 +161,7 @@ export default function TermActions({ term, textsQuery }: TermActionsProps) {
             ) : (
               <div className="bg-gray-50 rounded-lg divide-y divide-gray-100 border border-gray-100">
                 {textsResults.map((doc, i) => {
-                  const chapterPath = glossFileToChapterPath(doc.GlossFile);
+                  const chapterPath = glossFileToChapterPath(doc.GlossFile, doc.CollectionFile);
                   const bookPath = collectionFileToBookPath(doc.CollectionFile);
                   const snippet = doc.MatchDetails?.Snippet?.trim().replace(/\n+/g, " ");
                   return (

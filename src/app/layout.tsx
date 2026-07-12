@@ -53,7 +53,11 @@ export const metadata: Metadata = {
   icons: { icon: [_icon] },
 };
 
-const BUILD_DATE = new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC";
+// Set at Docker build time (see Dockerfile); falls back to the current time
+// for local dev, where there is no separate build step.
+const BUILD_DATE =
+  process.env.NEXT_PUBLIC_BUILD_DATE ??
+  new Date().toISOString().slice(0, 19).replace("T", " ") + " UTC";
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ?? "";
 const GA_TAG = process.env.NEXT_PUBLIC_GA_TAG ?? "G-03MVHHCXJ6";
 
