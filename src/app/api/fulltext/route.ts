@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const SITE_THEME_DEFAULTS: Record<string, string> = {
-  chinesenotes: "http://chinesenotes.com/findadvanced/",
-  ntireader:    "http://ntireader.org/findadvanced/",
-  hbreader:     "http://hbreader.org/findadvanced/",
+  chinesenotes: "https://chinesenotes.com/findadvanced/",
+  ntireader:    "https://ntireader.org/findadvanced/",
+  hbreader:     "https://hbreader.org/findadvanced/",
 };
 
 function getFulltextApiUrl(): string {
