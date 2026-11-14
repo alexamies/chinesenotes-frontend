@@ -65,7 +65,7 @@ The dictionary is loaded from `data/dictionary.json` at startup. This file is ge
 | *(unset)* | — | Keeps `data/dictionary.json` if it already exists; otherwise falls back to `assets/example_dictionary.json` |
 | `demo` | — | `assets/example_dictionary.json` (small subset, no sibling repo needed) |
 | `chinesenotes` | `../chinesenotes.com` | `data/cnotes_zh_en_dict.tsv`, `data/modern_named_entities.txt`, `data/translation_memory_literary.txt`, `data/translation_memory_modern.txt` |
-| `ntireader` | `../buddhist-dictionary` | `data/dictionary/buddhist_named_entities.txt`, `data/dictionary/buddhist_terminology.txt`, `data/dictionary/cnotes_zh_en_dict.tsv`, `data/dictionary/fgs_mwe.txt`, `data/dictionary/translation_memory_buddhist.txt`, `data/dictionary/translation_memory_hsingyun.txt`, `data/dictionary/translation_memory_literary.txt` |
+| `ntireader` | `../buddhist-dictionary` | `data/dictionary/buddhist_named_entities.txt`, `data/dictionary/buddhist_terminology.txt`, `data/dictionary/cnotes_zh_en_dict.tsv`, `data/dictionary/fgs_mwe.txt`, `data/dictionary/huilin_index.tsv`, `data/dictionary/translation_memory_buddhist.txt`, `data/dictionary/translation_memory_hsingyun.txt`, `data/dictionary/translation_memory_literary.txt` |
 | `hbreader` | `../hbreader` | `data/dictionary/buddhist_named_entities.txt`, `data/dictionary/buddhist_terminology.txt`, `data/dictionary/cnotes_zh_en_dict.tsv`, `data/dictionary/fgs_mwe.txt`, `data/dictionary/modern_named_entities.txt`, `data/dictionary/translation_memory_buddhist.txt`, `data/dictionary/translation_memory_hsingyun.txt`, `data/dictionary/translation_memory_literary.txt`, `data/dictionary/translation_memory_modern.txt` |
 
 To build the dictionary manually for a specific site:
