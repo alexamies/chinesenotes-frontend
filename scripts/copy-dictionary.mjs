@@ -27,7 +27,7 @@ const CONFIGS = {
       "data/dictionary/buddhist_terminology.txt",
       "data/dictionary/cnotes_zh_en_dict.tsv",
       "data/dictionary/fgs_mwe.txt",
-      "data/dictionary/huilin_index.tsv",
+      "data/dictionary/huilin.tsv",
       "data/dictionary/translation_memory_buddhist.txt",
       "data/dictionary/translation_memory_hsingyun.txt",
       "data/dictionary/translation_memory_literary.txt",
@@ -99,7 +99,7 @@ function parseLine(line) {
   const headwordId  = cols[0];
   const simplified  = cols[1];
   const traditional = cols[2] === "\\N" ? simplified : cols[2];
-  // Some sources (e.g. huilin_index.tsv) have no pinyin or English (\\N);
+  // Some sources (e.g. huilin.tsv) have no pinyin or English (\\N);
   // normalize to "" so they are neither displayed nor indexed as literal "\\N".
   const pinyin      = cols[3] === "\\N" ? "" : (cols[3] ?? "");
   const english     = cols[4] === "\\N" ? "" : (cols[4] ?? "");
